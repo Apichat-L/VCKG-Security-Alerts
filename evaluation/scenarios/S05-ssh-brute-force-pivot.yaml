@@ -1,0 +1,28 @@
+# Dep-PC (Office, low value) to Admin-PC (Office, high value) over SSH: wrong passwords first, then the lab's dummy
+# credential. Real UTC windows from evaluation/pentest/run_pentest_atomics.sh (run 2026-11-13).
+id: S05-ssh-brute-force-pivot
+description: Dep-PC guesses Admin-PC's SSH password, then logs in with the lab credential and uses it as a pivot.
+start: 2026-11-13T14:38:19Z
+end: 2026-11-13T14:38:28Z
+attacker: dep-pc
+steps:
+  - step: 1
+    start: 2026-11-13T14:38:19Z
+    end: 2026-11-13T14:38:27Z
+    target: Admin-PC
+    cve:
+    technique: T1110.001
+    outcome: failed
+    achieved: none
+    pivot: false
+    notes: Three wrong SSH passwords via sshpass, all denied. evidence s05_ssh_fail.txt
+  - step: 2
+    start: 2026-11-13T14:38:27Z
+    end: 2026-11-13T14:38:28Z
+    target: Admin-PC
+    cve:
+    technique: T1021.004
+    outcome: success
+    achieved: code_exec
+    pivot: true
+    notes: SSH login with the lab's dummy credential, ran id and hostname on admin-pc. evidence s05_ssh_success.txt

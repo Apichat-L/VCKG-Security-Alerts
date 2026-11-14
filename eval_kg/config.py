@@ -25,6 +25,7 @@ DRY_RUN = ROOT / "evaluation" / "dry_run"                # synthetic, pipeline t
 REPORTS = ROOT / "data" / "reports"
 SCORE_REPORT = REPORTS / "eval_score_ablation.md"
 BLAST_REPORT = REPORTS / "eval_blast_radius.md"
+SENSITIVITY_REPORT = REPORTS / "eval_sensitivity.md"
 
 MATCH_SLACK_SECONDS = int(os.getenv("EVAL_MATCH_SLACK", "120"))   # alert <-> pentest step time tolerance
 BOOTSTRAP = int(os.getenv("EVAL_BOOTSTRAP", "1000"))

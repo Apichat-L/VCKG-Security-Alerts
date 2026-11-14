@@ -1,0 +1,52 @@
+# A DMZ web server (web) is the foothold; it pivots across the firewall (DMZ->APP, allowed) to Jenkins and runs
+# the real CVE-2024-23897 CLI file-read, then probes the web tier. Because this crosses zones, Suricata (in the
+# firewall namespace) sees the Jenkins CLI traffic and raises it with the CVE attached (ET EXPLOIT sid 2050517 +
+# lab sid 9000001) -- so the one genuinely-exploited CVE finally produces a CVE-named alert and can be scored in
+# A2. The SQLi probe on Web raises rule 31164, whose technique chains to CVE-2024-38476, giving a second,
+# probed-but-not-exploited instance for contrast. Real UTC windows from evaluation/pentest/run_pentest_s08.sh.
+id: S08-dmz-web-to-jenkins
+description: DMZ web foothold exploits Jenkins (CVE-2024-23897) over the firewall and probes the web tier.
+start: 2026-11-14T18:40:21Z
+end: 2026-11-14T18:40:41Z
+attacker: web
+steps:
+  - step: 1
+    start: 2026-11-14T18:40:21Z
+    end: 2026-11-14T18:40:22Z
+    target: Jenkins
+    cve: CVE-2024-23897
+    technique: T1190
+    outcome: success
+    achieved: data_access
+    pivot: true
+    notes: Unauthenticated CLI @-file read web->jenkins (DMZ->APP); leaked /etc/passwd incl. root. Detected by Suricata ET EXPLOIT sid 2050517 and lab sid 9000001 (CVE-2024-23897). evidence s08_jenkins_passwd.txt
+  - step: 2
+    start: 2026-11-14T18:40:28Z
+    end: 2026-11-14T18:40:28Z
+    target: API
+    cve:
+    technique: T1190
+    outcome: failed
+    achieved: none
+    pivot: false
+    notes: SQLi/traversal requests web->api; API rejected them (nothing disclosed). evidence s08_api_probe.txt
+  - step: 3
+    start: 2026-11-14T18:40:34Z
+    end: 2026-11-14T18:40:34Z
+    target: Nginx
+    cve:
+    technique: T1595.002
+    outcome: failed
+    achieved: none
+    pivot: false
+    notes: Traversal/XSS/known-bad-path requests web->nginx; no disclosure. evidence s08_nginx_probe.txt
+  - step: 4
+    start: 2026-11-14T18:40:40Z
+    end: 2026-11-14T18:40:41Z
+    target: Web
+    cve: CVE-2024-38476
+    technique: T1190
+    outcome: failed
+    achieved: none
+    pivot: false
+    notes: SQLi-pattern requests to Web's Apache; raised rule 31164 (SQL injection, technique chains to CVE-2024-38476) but nothing disclosed. evidence s08_web_probe.txt

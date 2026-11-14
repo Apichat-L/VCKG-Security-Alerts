@@ -1,0 +1,18 @@
+# Atomic Red Team T1136.001 (Create Local Account) mirrored as a real useradd on a Dep-PC foothold. Real UTC window
+# from evaluation/pentest/run_pentest_atomics.sh (run 2026-11-13). The account was removed afterwards.
+id: S04-account-creation
+description: Dep-PC foothold creates a local account (persistence).
+start: 2026-11-13T14:38:18Z
+end: 2026-11-13T14:38:19Z
+attacker: dep-pc
+steps:
+  - step: 1
+    start: 2026-11-13T14:38:18Z
+    end: 2026-11-13T14:38:19Z
+    target: Dep-PC
+    cve:
+    technique: T1136.001
+    outcome: success
+    achieved: code_exec
+    pivot: false
+    notes: useradd atomictest on Dep-PC, id confirmed, account removed afterwards. evidence s04_useradd.txt

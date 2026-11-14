@@ -54,10 +54,16 @@ def alert_contexts() -> list[dict]:
     return [json.loads(f.read_text(encoding="utf-8")) for f in sorted(config.ALERT_CONTEXTS.glob("*.json"))]
 
 
-def vulnerability_instances(contexts: list[dict]) -> tuple[dict, dict]:
+NON_ATTACK_GROUPS = {"ossec"}  # Wazuh agent lifecycle/administration alerts, never an attack on a service
+
+
+def vulnerability_instances(contexts: list[dict], technique_matches: bool = False) -> tuple[dict, dict]:
     """Group alerts into vulnerability instances (a, c) = (target asset, reported CVE).
 
     Returns ({(asset, cve, rule): [contexts]}, {(asset, rule): [contexts]} for alerts reporting no CVE).
+    With technique_matches, an alert that names no CVE falls back to the CVEs alert_kg linked to it through its
+    ATT&CK technique and the CWE/CAPEC chain (vulnerabilities.related_to_alert), except administrative alerts.
+    That is an inference, not a report by the sensor, so only the evaluation uses it.
     """
     instances, unscored = defaultdict(list), defaultdict(list)
     for ctx in contexts:
@@ -65,6 +71,8 @@ def vulnerability_instances(contexts: list[dict]) -> tuple[dict, dict]:
             continue
         asset, al = ctx["target"]["hostname"], ctx["alert"]
         cves = al.get("cves") or []
+        if not cves and technique_matches and not NON_ATTACK_GROUPS & set(al.get("groups") or []):
+            cves = [r["cve"] for r in (ctx.get("vulnerabilities") or {}).get("related_to_alert", [])]
         if cves:
             for cve in cves:
                 instances[(asset, cve, al["rule_id"])].append(ctx)

@@ -48,7 +48,7 @@ def asset_cve_items(g, epss, beta, gamma, p_of=None) -> list[dict]:
 
 def alert_items(g, epss, beta, gamma, wait=60) -> list[dict]:
     """Vulnerability instances (a, c) reported by alerts, E = H (Eq. 14), with their alert time span."""
-    instances, _ = vulnerability_instances(alert_contexts())
+    instances, _ = vulnerability_instances(alert_contexts(), technique_matches=True)
     cves, _ = vckg_graph.cve_details(sorted({c for _, c, _ in instances}), wait)
     out = []
     for (asset_name, cve, rule), ctxs in instances.items():
@@ -184,6 +184,116 @@ def score_ablation(labels_dir: Path, beta=score_config.BETA, gamma=score_config.
             for i in q:
                 w.writerow([f"scenario:{i['scenario']}", i["id"], i["grade"], *[i.get(k) for k in keys]])
     print(f"score ablation: {len(a_items)} asset x CVE pairs, {len(queries)} scenarios -> {config.SCORE_REPORT}")
+
+
+# =================================================================================== Part A, sensitivity
+def _kendall_tau_b(xs: list[float], ys: list[float]) -> dict:
+    """Concordant / discordant / tie counts and Kendall's tau-b between two score orderings of the same
+    items. O(n^2), fine for a few hundred pairs; no SciPy so no new dependency."""
+    n = len(xs)
+    c = d = tx = ty = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            a, b = xs[i] - xs[j], ys[i] - ys[j]
+            if a == 0 and b == 0:
+                continue
+            if a == 0:
+                tx += 1
+            elif b == 0:
+                ty += 1
+            elif a * b > 0:
+                c += 1
+            else:
+                d += 1
+    denom = ((c + d + tx) * (c + d + ty)) ** 0.5
+    tau = (c - d) / denom if denom else None
+    return {"concordant": c, "discordant": d, "tied_L0_only": tx, "tied_EVS_only": ty, "tau_b": tau,
+            "total_pairs": n * (n - 1) // 2}
+
+
+def sensitivity(wait: int = 60, beta=score_config.BETA, gamma=score_config.GAMMA) -> None:
+    """How the EVS (L4) reprioritises the CVSS base (L0) ranking across the whole asset x CVE inventory.
+
+    This is a sensitivity analysis of the scoring mechanism, not a ground-truth validation: there is no
+    outcome label here. It quantifies how much the context terms (CR/IR/AR, MAV, blast radius) reorder a
+    pure-CVSS ranking, and checks the reordering tracks asset value and reachability (the design intent).
+    The validated contextual claim is Part B (blast radius vs lab-measured impact)."""
+    g = vckg_graph.load(wait)
+    _, epss = _epss()
+    items = []
+    for it in asset_cve_items(g, epss, beta, gamma):
+        a = g.assets[it["asset"]]
+        tier = max(a["cr"], a["ir"], a["ar"], key=lambda x: {"L": 0, "M": 1, "H": 2}[x])
+        items.append({"asset": it["asset"], "cve": it["cve"], "L0": it["L0"], "L4": it["L4"],
+                      "delta": it["L4"] - it["L0"], "cr": a["cr"], "ir": a["ir"], "ar": a["ar"],
+                      "tier": tier, "internet": g.internet_path(it["asset"])})
+
+    tb = _kendall_tau_b([i["L0"] for i in items], [i["L4"] for i in items])
+    # "material" cross-asset reorderings: a clear base-CVSS gap (>=0.5) that the EVS flips
+    material = sum(1 for i in range(len(items)) for j in range(i + 1, len(items))
+                   if items[i]["asset"] != items[j]["asset"]
+                   and abs(items[i]["L0"] - items[j]["L0"]) >= 0.5
+                   and (items[i]["L0"] - items[j]["L0"]) * (items[i]["L4"] - items[j]["L4"]) < 0)
+
+    def summ(xs):
+        xs = sorted(xs)
+        if not xs:
+            return None, None, 0
+        mean = sum(xs) / len(xs)
+        mid = xs[len(xs) // 2] if len(xs) % 2 else (xs[len(xs) // 2 - 1] + xs[len(xs) // 2]) / 2
+        return mean, mid, len(xs)
+
+    per_asset = []
+    for h in g.assets:
+        a = g.assets[h]
+        mean, mid, n = summ([i["delta"] for i in items if i["asset"] == h])
+        if n:
+            per_asset.append((h, a["cr"], a["ir"], a["ar"], g.internet_path(h), mean, mid, n))
+    per_asset.sort(key=lambda r: r[5])  # most-suppressed first
+
+    L = ["# Evaluation, Part A (sensitivity): how the EVS reprioritises CVSS", "",
+         f"Generated {date.today().isoformat()} by `python -m eval_kg sensitivity`. β = {beta:g}, γ = {gamma:g}.", "",
+         "> **This is a sensitivity analysis of the scoring mechanism, not a ground-truth validation.** It measures "
+         "how far the EVS (L4) reorders a pure CVSS-base (L0) ranking across the whole asset × CVE inventory, with "
+         "no alert and no exploit outcome, and checks the reordering follows asset value and reachability — i.e. the "
+         "context terms do what the design claims. It does **not** show the reordering is *correct*: there is no "
+         "outcome label here. The validated contextual claim is Part B (blast radius vs lab-measured impact); the "
+         "ground-truth ranking tests are Parts A1/A2. Reason this matters: the lab's only alertable CVEs and its "
+         "only repeatable exploit are all CVSS 9.8 (ceiling), so an A2 EVS-beats-CVSS result is not reachable here.", "",
+         f"**Inventory:** {len(items)} asset × CVE pairs across {len({i['asset'] for i in items})} assets.", "",
+         "## Reordering magnitude (L0 CVSS base vs L4 EVS)", "",
+         f"- Kendall's tau-b: **{_f(tb['tau_b'])}** (1 = identical order, 0 = unrelated). The EVS keeps the broad "
+         "CVSS order but reorders within it.",
+         f"- Pairs: {tb['concordant']} concordant, **{tb['discordant']} discordant**, "
+         f"{tb['tied_L0_only']} tied on CVSS only, {tb['tied_EVS_only']} tied on EVS only, of {tb['total_pairs']} total.",
+         f"- Material cross-asset reorderings (a CVSS gap ≥ 0.5 that the EVS flips): **{material}**.", "",
+         "## Direction check (mean / median of L4 − L0, per asset)", "",
+         "If the reordering tracks context, the EVS should lift CVEs on valuable, reachable hosts and lower them on "
+         "throwaway, contained ones. Assets below are ordered most-suppressed first.", "",
+         "| asset | CR/IR/AR | internet-reachable | mean ΔEVS | median ΔEVS | n CVEs |",
+         "|---|:--:|:--:|--:|--:|--:|"]
+    for h, cr, ir, ar, net, mean, mid, n in per_asset:
+        L.append(f"| {h} | {cr}/{ir}/{ar} | {'yes' if net else 'no'} | {mean:+.2f} | {mid:+.2f} | {n} |")
+
+    lifted = sorted(items, key=lambda i: -i["delta"])[:6]
+    dropped = sorted(items, key=lambda i: i["delta"])[:6]
+    L += ["", "## Exemplars", "",
+          "Largest lifts (EVS raises a CVE because its host is valuable / reachable / high-blast):", "",
+          "| asset | CVE | CR/IR/AR | CVSS base (L0) | EVS (L4) | Δ |", "|---|---|:--:|--:|--:|--:|"]
+    for i in lifted:
+        L.append(f"| {i['asset']} | {i['cve']} | {i['cr']}/{i['ir']}/{i['ar']} | {i['L0']:.1f} | {i['L4']:.2f} | {i['delta']:+.2f} |")
+    L += ["", "Largest drops (EVS lowers a CVE because its host is low-value / contained):", "",
+          "| asset | CVE | CR/IR/AR | CVSS base (L0) | EVS (L4) | Δ |", "|---|---|:--:|--:|--:|--:|"]
+    for i in dropped:
+        L.append(f"| {i['asset']} | {i['cve']} | {i['cr']}/{i['ir']}/{i['ar']} | {i['L0']:.1f} | {i['L4']:.2f} | {i['delta']:+.2f} |")
+    L += ["", "Reading these together: a moderate CVE on a critical, reachable host can out-rank a high CVE on a "
+          "throwaway host — the reprioritisation a pure CVSS score cannot make. Whether that reprioritisation is "
+          "*right* is what Part B measures, not this report.", ""]
+
+    config.SENSITIVITY_REPORT.parent.mkdir(parents=True, exist_ok=True)
+    config.SENSITIVITY_REPORT.write_text("\n".join(L), encoding="utf-8")
+    print(f"sensitivity: {len(items)} pairs, tau-b {_f(tb['tau_b'])}, {material} material reorderings "
+          f"-> {config.SENSITIVITY_REPORT}")
 
 
 # =========================================================================================== Part B

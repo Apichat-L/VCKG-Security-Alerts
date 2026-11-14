@@ -1,0 +1,29 @@
+# Perimeter probing from kali against Nginx and Web: attack-pattern HTTP requests that achieve nothing. Real UTC
+# windows from evaluation/pentest/run_pentest_atomics.sh (run 2026-11-13). The probes are generic (path traversal,
+# SQLi-looking string), so step 2 does not exercise a CVE-specific feature; treat its outcome as weak evidence.
+id: S07-web-probing
+description: kali sends path-traversal and SQLi-looking requests at Nginx and Web; nothing is disclosed.
+start: 2026-11-13T14:38:28Z
+end: 2026-11-13T14:38:28Z
+attacker: kali
+steps:
+  - step: 1
+    start: 2026-11-13T14:38:28Z
+    end: 2026-11-13T14:38:28Z
+    target: Nginx
+    cve:
+    technique: T1595.002
+    outcome: failed
+    achieved: none
+    pivot: false
+    notes: Traversal and missing-admin requests to Nginx, no disclosure. evidence s07_nginx_probe.txt
+  - step: 2
+    start: 2026-11-13T14:38:28Z
+    end: 2026-11-13T14:38:28Z
+    target: Web
+    cve: CVE-2024-38476
+    technique: T1190
+    outcome: failed
+    achieved: none
+    pivot: false
+    notes: SQLi-like and traversal requests to Web, no disclosure. evidence s07_web_probe.txt
