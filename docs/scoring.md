@@ -92,3 +92,29 @@ With β = 0.5, Nginx's EVS is Env × 1.0625.
 | `data/reports/threat_report.md` | alerted instances ranked by EVS with every intermediate value, the alerts that report no CVE, assets, and a CVSS band → EVS level matrix |
 | `data/scores/alert_scores.csv`, `asset_cve_scores.csv` | every score and metric. The asset × CVE file also holds EPSS, KEV and CISA SSVC as **baselines** for stage 5; they are not part of the EVS |
 | Neo4j | `Alert.evs`, `evs_level`, `evs_cve`, `blast_radius` |
+
+## 7. Explaining one input (`explain`, for the demo)
+
+`python -m score_kg explain --cve <id> | --technique <id> | --tactic <id> [--asset <host>]` runs the same
+calculation for one input and prints every step. It is not part of `score_kg all`.
+
+| Input | Targets and CVEs |
+|---|---|
+| CVE | the hosts whose software has it (or `--asset`, scored even when the CVE is not on its software, flagged `present_on_asset: false`) |
+| Technique | Technique family ← CAPEC ← CWE (Base/Variant/Compound) → CVE on lab software, the link rule of `alert_kg`. Only hosts with such a CVE are targets |
+| Tactic | all techniques that `IMPLEMENTS` it (with sub-techniques), then as Technique |
+
+For each target: the 3 shortest attack paths from the Internet zone over `CAN_REACH` (≤ 4 hops). For each
+(target, CVE): `model.score` (E = H when an alert already reports that CVE on that host), the terms of P(u) and BR_k.
+
+The result goes to Neo4j as its own subgraph. Nothing else reads it. `explain --clear` removes it.
+```
+(:Analysis {id: '<input>@<asset|all>'})-[:INPUT]->(Vulnerability | Technique | Tactic)
+(:Analysis)-[:TARGET {paths}]->(Asset)
+(:Analysis)-[:HAS_SCORE]->(:Score)-[:FOR_ASSET]->(Asset)
+                                  -[:FOR_CVE]->(Vulnerability)
+                                  -[:BLAST_RADIUS {hops}]->(Asset)
+                                  -[:VIA_TECHNIQUE]->(Technique)      the technique CAPEC maps to
+```
+`Score` holds every value of §3–4 (`env_vector`, `MAV`, `E`, `E_reason`, `env`, `P`, `P_terms`, `evs_formula`,
+`evs`, `level`, `blast_radius`). The Browser queries are in [demo_queries.md](demo_queries.md), Step 5.
