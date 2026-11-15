@@ -195,5 +195,6 @@ cd lab_env; docker compose up -d; cd ..        # the lab must run for the measur
 python -m eval_kg measure                       # Part B ground truth -> data/eval/*.json
 python -m eval_kg all                           # both reports -> data/reports/eval_*.md (+ CSV)
 python -m eval_kg sensitivity                    # Part A sensitivity -> data/reports/eval_sensitivity.md (no ground truth)
+python -m eval_kg plot [--notes FILE] [--before STATS]   # figures + data/reports/final_check_report.md from the reports' JSON
 python -m eval_kg all --labels evaluation/dry_run   # pipeline test with synthetic labels (never report these)
 ```

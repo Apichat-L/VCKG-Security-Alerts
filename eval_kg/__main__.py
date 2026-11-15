@@ -7,6 +7,7 @@
   blast-ablation   Part B: B0-B5 vs the measured sets               -> data/reports/eval_blast_radius.md
   score-ablation   Part A: L0-L4 + baselines vs pentest labels      -> data/reports/eval_score_ablation.md
   sensitivity      Part A: how the EVS reprioritises CVSS (inventory, no ground truth) -> data/reports/eval_sensitivity.md
+  plot             figures (data/reports/figures/) + data/reports/final_check_report.md from the reports' JSON
   all              blast-ablation + score-ablation (uses existing measurements)
 Labels: --labels evaluation (the real pentest record, default) or --labels evaluation/dry_run (synthetic test).
 """
@@ -19,7 +20,9 @@ from . import config
 def main() -> None:
     ap = argparse.ArgumentParser(prog="eval_kg", description="Ground truth and ablation evaluation (stage 5).")
     ap.add_argument("command", choices=["measure-reach", "measure-usable", "measure-deps", "measure",
-                                        "blast-ablation", "score-ablation", "sensitivity", "all"])
+                                        "blast-ablation", "score-ablation", "sensitivity", "plot", "all"])
+    ap.add_argument("--notes", type=Path, help="plot: markdown (build, validation, caveats) placed at the top of the report")
+    ap.add_argument("--before", type=Path, help="plot: saved `cti_kg stats` output from before the wipe, for the build figure")
     ap.add_argument("--labels", type=Path, default=config.ROOT / "evaluation",
                     help="folder with scenarios/ and pentest_results.csv (evaluation/dry_run for the synthetic test)")
     ap.add_argument("--wait", type=int, default=60)
@@ -38,6 +41,9 @@ def main() -> None:
         run.score_ablation(args.labels, wait=args.wait)
     if args.command == "sensitivity":
         run.sensitivity(wait=args.wait)
+    if args.command == "plot":
+        from . import plots
+        plots.plot(args.notes, args.before)
 
 
 if __name__ == "__main__":

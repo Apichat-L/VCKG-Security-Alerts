@@ -375,4 +375,8 @@ def run_sensitivity(wait=60):
         L.append(f"| {beta:g} | {gamma:g} | {tau:.3f} | {t10}/10 | {shifted} |")
     config.REPORTS.mkdir(parents=True, exist_ok=True)
     config.SENSITIVITY_REPORT.write_text("\n".join(L) + "\n", encoding="utf-8")
+    config.SENSITIVITY_REPORT.with_suffix(".json").write_text(json.dumps({
+        "generated": date.today().isoformat(), "ref_beta": config.BETA, "ref_gamma": config.GAMMA, "n_pairs": len(ref),
+        "grid": [{"beta": b, "gamma": gm, "tau": t, "top10_overlap": t10, "level_changes": sh}
+                 for b, gm, t, t10, sh in lines]}, indent=1), encoding="utf-8")
     print(f"sensitivity: {len(lines)} (beta, gamma) settings, Kendall tau min {min(taus):.3f} -> {config.SENSITIVITY_REPORT}")

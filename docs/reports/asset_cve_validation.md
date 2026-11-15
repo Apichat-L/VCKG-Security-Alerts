@@ -1,0 +1,46 @@
+# Asset → CVE links vs Wazuh vulnerability detection
+
+Generated 2026-11-14 by `python -m asset_kg wazuh-check`. Method: `asset_kg/wazuh_check.py`.
+
+Wazuh is a second opinion, not ground truth (PLAN.md §3), so the numbers below are **agreement**. Only software that Wazuh inventories as a package on the same host is scored. Wazuh CVEs that are not in the CTI graph (CVE years not loaded) are counted separately, not as misses.
+
+## Summary (comparable software)
+
+| Graph CVEs | Wazuh CVEs (in graph) | Both | Graph only | Wazuh only | Precision | Recall | Wazuh CVEs outside the graph |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 155 | 16 | 15 | 140 | 1 | 9.7% | 93.8% | 0 |
+
+## Per asset and software
+
+| Asset | Software (graph) | Graph CVEs from | Package (Wazuh) | Graph | Wazuh | Both | Precision | Recall | Outside graph |
+|---|---|---|---|---:|---:|---:|---:|---:|---:|
+| Admin-PC | openssh 1:8.9p1-3 | OSV Ubuntu:22.04:LTS | openssh-server 1:8.9p1-3 | 41 | 6 | 6 | 14.6% | 100.0% | 0 |
+| Dep-PC | openssh 1:8.9p1-3 | OSV Ubuntu:22.04:LTS | openssh-server 1:8.9p1-3 | 41 | 6 | 6 | 14.6% | 100.0% | 0 |
+| Files-SMB | samba 2:4.17.12+dfsg-0+deb12u4 | OSV Debian:12 | samba 2:4.17.12+dfsg-0+deb12u4 | 5 | 1 | 0 | 0.0% | 0.0% | 0 |
+| Nginx | nginx 1.25.3 | NVD | nginx 1.25.3-1~bookworm | 22 | 0 | 0 | 0.0% | n/a | 0 |
+| PostgreSQL | postgresql 15.5 | NVD | postgresql-15 15.5-1.pgdg120+1 | 46 | 3 | 3 | 6.5% | 100.0% | 0 |
+
+## Version check (services.csv vs Wazuh inventory)
+
+All comparable software has the version Wazuh sees on the host.
+
+## Not scored
+
+| Asset | Software | Graph CVEs | Why |
+|---|---|---:|---|
+| API | node.js 21.6.1 | 7 | not inventoried by Wazuh |
+| Jenkins | jenkins 2.441 | 58 | not inventoried by Wazuh |
+| Web | apache httpd 2.4.58 | 78 | not inventoried by Wazuh |
+
+## Disagreements by reason
+
+| Side | Reason | CVEs |
+|---|---|---:|
+| graph only | distribution data (Ubuntu:22.04:LTS) lists the installed version as affected (fixed in a later revision); Wazuh does not report it | 62 |
+| graph only | upstream build (no distro_package in services.csv; maintainer Debian PostgreSQL Maintainers <team+postgresql@tracker.debian.org>): NVD range covers the version, Wazuh does not report it | 43 |
+| graph only | upstream build (no distro_package in services.csv; maintainer NGINX Packaging <nginx-packaging@f5.com>): NVD range covers the version, Wazuh does not report it | 22 |
+| graph only | distribution data (Ubuntu:22.04:LTS) lists the installed version as affected (no fix released yet); Wazuh does not report it | 8 |
+| graph only | distribution data (Debian:12) lists the installed version as affected (no fix released yet); Wazuh does not report it | 5 |
+| wazuh only | NVD range for samba:samba (...) does not include 4.17.12 | 1 |
+
+Every disagreement, with its CVSS and reason: `data/reports/asset_cve_disagreements.csv`.

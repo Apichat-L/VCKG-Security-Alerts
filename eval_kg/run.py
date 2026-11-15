@@ -141,8 +141,14 @@ def score_ablation(labels_dir: Path, beta=score_config.BETA, gamma=score_config.
             out.append((f"L4 − {base}", metrics.paired_bootstrap(units, fn("L4"), fn(base), config.BOOTSTRAP, config.SEED)))
         return out
 
-    def emit(title, rows, gain_rows, note):
+    payload = {"generated": date.today().isoformat(), "beta": beta, "gamma": gamma, "synthetic": synthetic, "sets": {}}
+
+    def emit(title, rows, gain_rows, note, set_key=None):
         nonlocal L
+        if set_key:
+            payload["sets"][set_key] = {"title": title, "note": note,
+                                        "scores": {k: m for k, m in rows},
+                                        "gains": {name: b for name, b in gain_rows}}
         L += [f"## {title}", "", note, "",
               "| Score | NDCG@5 | NDCG@10 | P@5 | P@10 | MRR | Rank of first true item |",
               "|---|---:|---:|---:|---:|---:|---:|"]
@@ -159,7 +165,8 @@ def score_ablation(labels_dir: Path, beta=score_config.BETA, gamma=score_config.
         emit("A1. Vulnerabilities on assets (asset × CVE, no alert)", table(a_items, False, 1, 1),
              gains(a_items, False),
              f"{len(a_items)} labelled pairs from `pentest_results.csv` ({n_pos} exploited); `not_tried` pairs are "
-             "left out. Relevance = exploited (1/0). Bootstrap resamples pairs.")
+             "left out. Relevance = exploited (1/0). Bootstrap resamples pairs.", set_key="A1")
+        payload["sets"]["A1"].update(n_items=len(a_items), n_positive=n_pos)
     else:
         L += ["## A1. Vulnerabilities on assets", "", "No labelled pairs yet (`pentest_results.csv` empty or missing).", ""]
     if queries:
@@ -169,12 +176,16 @@ def score_ablation(labels_dir: Path, beta=score_config.BETA, gamma=score_config.
              gains(units, not by_items),
              f"{len(queries)} scenarios, {sum(len(q) for q in queries)} instances in their time windows. Grades 3/2/1/0 "
              f"from the pentest record. Metrics averaged over scenarios; bootstrap over "
-             f"{'instances (fewer than 5 scenarios)' if by_items else 'scenarios'}.")
+             f"{'instances (fewer than 5 scenarios)' if by_items else 'scenarios'}.", set_key="A2")
+        payload["sets"]["A2"].update(n_scenarios=len(queries), n_instances=sum(len(q) for q in queries),
+                                     scenarios=[{"id": q[0]["scenario"], "n": len(q),
+                                                 "grades": sorted(i["grade"] for i in q)} for q in queries])
     else:
         L += ["## A2. Alerted instances", "", "No pentest scenario with alert instances in its window yet.", ""]
 
     config.REPORTS.mkdir(parents=True, exist_ok=True)
     config.SCORE_REPORT.write_text("\n".join(L), encoding="utf-8")
+    config.SCORE_REPORT.with_suffix(".json").write_text(json.dumps(payload, indent=1), encoding="utf-8")
     with open(config.SCORE_REPORT.with_suffix(".csv"), "w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh)
         w.writerow(["set", "item", "grade", *keys])
@@ -292,6 +303,11 @@ def sensitivity(wait: int = 60, beta=score_config.BETA, gamma=score_config.GAMMA
 
     config.SENSITIVITY_REPORT.parent.mkdir(parents=True, exist_ok=True)
     config.SENSITIVITY_REPORT.write_text("\n".join(L), encoding="utf-8")
+    config.SENSITIVITY_REPORT.with_suffix(".json").write_text(json.dumps({
+        "generated": date.today().isoformat(), "beta": beta, "gamma": gamma, "kendall": tb, "material_reorderings": material,
+        "pairs": [{k: i[k] for k in ("asset", "cve", "L0", "L4", "delta", "cr", "ir", "ar", "internet")} for i in items],
+        "per_asset": [{"asset": h, "cr": cr, "ir": ir, "ar": ar, "internet": bool(net), "mean": mean, "median": mid, "n": n}
+                      for h, cr, ir, ar, net, mean, mid, n in per_asset]}, indent=1), encoding="utf-8")
     print(f"sensitivity: {len(items)} pairs, tau-b {_f(tb['tau_b'])}, {material} material reorderings "
           f"-> {config.SENSITIVITY_REPORT}")
 
@@ -339,13 +355,20 @@ def blast_ablation(labels_dir: Path | None = None, beta=score_config.BETA, gamma
     L += ["", "Variants: B0 none · B1 unrestricted k-hop over any edge type · B2 zone-level · B3 ours undirected · "
               "B4 ours (Algorithm 1, k=1) · B5 ours k=2/3.", ""]
 
+    bp = {"generated": date.today().isoformat(), "variants": variants.VARIANTS, "per_asset": {}, "per_pair": {},
+          "cost": {}, "downstream_ndcg10": {}, "measured_at": {n: o["measured_at"] for n, o in observed.items()}}
+
     # ---- per asset (each asset is one alerted host)
     for name, o in observed.items():
         mode = TRUTH_MODE[name]
+        bp["per_asset"][name] = {"mode": mode, "variants": {}}
         L += [f"## {name} ({mode} mode), per asset", "", "| Variant | Precision | Recall | F1 | Mean set size |",
               "|---|---:|---:|---:|---:|"]
         for v in variants.VARIANTS:
             prf = [metrics.set_prf(pred[(v, mode, h)], o["sets"].get(h, set())) for h in hosts]
+            bp["per_asset"][name]["variants"][v] = {
+                "precision": _mean([p for p, _, _ in prf]), "recall": _mean([r for _, r, _ in prf]),
+                "f1": _mean([f for _, _, f in prf]), "mean_size": _mean([len(pred[(v, mode, h)]) for h in hosts])}
             L.append(f"| {v} | {_f(_mean([p for p, _, _ in prf]))} | {_f(_mean([r for _, r, _ in prf]))} | "
                      f"{_f(_mean([f for _, _, f in prf]))} | {_f(_mean([len(pred[(v, mode, h)]) for h in hosts]), 2)} |")
         L += ["", "Observed sets: " + "; ".join(f"{h} → {', '.join(sorted(o['sets'].get(h, set()))) or '∅'}" for h in hosts), ""]
@@ -361,6 +384,8 @@ def blast_ablation(labels_dir: Path | None = None, beta=score_config.BETA, gamma
               "| Variant | Precision | Recall | F1 |", "|---|---:|---:|---:|"]
         for v in variants.VARIANTS:
             prf = [metrics.set_prf(pred[(v, m, h)], observed[primary[m]]["sets"].get(h, set())) for h, m in pairs]
+            bp["per_pair"][v] = {"precision": _mean([p for p, _, _ in prf]), "recall": _mean([r for _, r, _ in prf]),
+                                 "f1": _mean([f for _, _, f in prf]), "n_pairs": len(pairs)}
             L.append(f"| {v} | {_f(_mean([p for p, _, _ in prf]))} | {_f(_mean([r for _, r, _ in prf]))} | "
                      f"{_f(_mean([f for _, _, f in prf]))} |")
         L.append("")
@@ -370,6 +395,8 @@ def blast_ablation(labels_dir: Path | None = None, beta=score_config.BETA, gamma
           "|---|---:|---:|---:|"]
     for v in variants.VARIANTS:
         c = cost[v]
+        bp["cost"][v] = {"ms": _mean([x[0] for x in c]), "hosts": _mean([x[1] for x in c]),
+                         "non_asset_nodes": _mean([x[2] for x in c])}
         L.append(f"| {v} | {_f(_mean([x[0] for x in c]), 2)} | {_f(_mean([x[1] for x in c]), 2)} | "
                  f"{_f(_mean([x[2] for x in c]), 1)} |")
     L.append("")
@@ -387,9 +414,11 @@ def blast_ablation(labels_dir: Path | None = None, beta=score_config.BETA, gamma
             p_of = {h: variants.propagation(dist_p[v][h], g.crit, gamma) for h in hosts}
             items = [dict(i, grade=truth[(i["asset"], i["cve"])])
                      for i in asset_cve_items(g, epss, beta, gamma, p_of) if (i["asset"], i["cve"]) in truth]
-            L.append(f"| {v} | {_f(metrics.ndcg_at_k(metrics.ranked(items, 'L4'), 10))} |")
+            bp["downstream_ndcg10"][v] = metrics.ndcg_at_k(metrics.ranked(items, 'L4'), 10)
+            L.append(f"| {v} | {_f(bp['downstream_ndcg10'][v])} |")
     else:
         L.append("Pending: needs `evaluation/pentest_results.csv` from the pentest.")
     config.REPORTS.mkdir(parents=True, exist_ok=True)
     config.BLAST_REPORT.write_text("\n".join(L) + "\n", encoding="utf-8")
+    config.BLAST_REPORT.with_suffix(".json").write_text(json.dumps(bp, indent=1), encoding="utf-8")
     print(f"blast-radius ablation -> {config.BLAST_REPORT}")
