@@ -1,0 +1,50 @@
+# S11: today's run (2026-11-15) of the Office lateral-movement chain. From a Dep-PC foothold: SSH brute force
+# into Admin-PC (fail then success, then pivot), and SMB credential stuffing against the Files-SMB finance share
+# (fail then success, reading salaries). These techniques are in the lab's Wazuh log map (5760/5715 SSH,
+# 100110/100111 SMB). Real UTC windows from evaluation/pentest/run_pentest_atomics.sh (run 2026-11-15).
+id: S11-office-ssh-smb-bruteforce
+description: Dep-PC foothold brute-forces SSH into Admin-PC and credential-stuffs the Files-SMB finance share (2026-11-15 run).
+start: 2026-11-15T10:50:29Z
+end: 2026-11-15T10:50:37Z
+attacker: dep-pc
+steps:
+  - step: 1
+    start: 2026-11-15T10:50:29Z
+    end: 2026-11-15T10:50:36Z
+    target: Admin-PC
+    cve:
+    technique: T1110.001
+    outcome: failed
+    achieved: none
+    pivot: false
+    notes: dep-pc->admin-pc SSH with three wrong passwords; denied. Wazuh rule 5760 (failed SSH). evidence s05_ssh_fail.txt
+  - step: 2
+    start: 2026-11-15T10:50:36Z
+    end: 2026-11-15T10:50:36Z
+    target: Admin-PC
+    cve:
+    technique: T1021.004
+    outcome: success
+    achieved: code_exec
+    pivot: true
+    notes: dep-pc->admin-pc SSH with the real dummy credential; logged in, used as a pivot. Wazuh rule 5715 (successful SSH). evidence s05_ssh_success.txt
+  - step: 3
+    start: 2026-11-15T10:50:36Z
+    end: 2026-11-15T10:50:37Z
+    target: Files-SMB
+    cve:
+    technique: T1110
+    outcome: failed
+    achieved: none
+    pivot: false
+    notes: dep-pc->files-smb SMB with a wrong password; denied. Wazuh rule 100110 (SMB auth failed). evidence s06_smb_fail.txt
+  - step: 4
+    start: 2026-11-15T10:50:37Z
+    end: 2026-11-15T10:50:37Z
+    target: Files-SMB
+    cve:
+    technique: T1078
+    outcome: success
+    achieved: data_access
+    pivot: true
+    notes: dep-pc->files-smb SMB with the real dummy credential; read the finance share (salaries_2026.csv). Wazuh rule 100111 (SMB auth success). evidence s06_smb_success.txt

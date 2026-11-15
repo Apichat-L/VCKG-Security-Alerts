@@ -1,0 +1,19 @@
+# S13: External attacker web-application attack (run 2026-11-15). From kali (Internet zone), SQL-injection and
+# path-traversal requests at the DMZ Web (and Nginx); contained -- the static lab sites return normal/404,
+# nothing leaked. Raises web rules 31101/31164. T1190.
+id: S13-external-web-attack-contained
+description: kali sends SQLi and path-traversal payloads at the DMZ web tier; contained, nothing disclosed.
+start: 2026-11-15T13:05:20Z
+end: 2026-11-15T13:05:20Z
+attacker: kali
+steps:
+  - step: 1
+    start: 2026-11-15T13:05:20Z
+    end: 2026-11-15T13:05:20Z
+    target: Web
+    cve:
+    technique: T1190
+    outcome: failed
+    achieved: none
+    pivot: false
+    notes: kali->web (and nginx) SQLi UNION + path-traversal requests; no disclosure, servers answered normally. Raises web rules 31101/31164. evidence s13_web_contained.txt

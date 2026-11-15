@@ -1,0 +1,50 @@
+# S10: today's run (2026-11-15) of the DMZ web -> Jenkins cross-firewall exploit. A web (DMZ) foothold pivots
+# across the firewall (DMZ->APP) and runs the real CVE-2024-23897 CLI file-read on Jenkins, then probes the web
+# tier. The cross-zone Jenkins traffic is seen by Suricata and raised with the CVE attached (ET EXPLOIT sid
+# 2050517 + lab sid 9000001). Real UTC windows from evaluation/pentest/run_pentest_s08.sh (run 2026-11-15).
+id: S10-dmz-web-to-jenkins-1115
+description: DMZ web foothold exploits Jenkins (CVE-2024-23897) over the firewall and probes the web tier (2026-11-15 run).
+start: 2026-11-15T10:44:23Z
+end: 2026-11-15T10:44:47Z
+attacker: web
+steps:
+  - step: 1
+    start: 2026-11-15T10:44:26Z
+    end: 2026-11-15T10:44:28Z
+    target: Jenkins
+    cve: CVE-2024-23897
+    technique: T1190
+    outcome: success
+    achieved: data_access
+    pivot: true
+    notes: Unauthenticated CLI @-file read web->jenkins (DMZ->APP); leaked /etc/passwd incl. root. Detected by Suricata ET EXPLOIT sid 2050517 and lab sid 9000001 (CVE-2024-23897). evidence s08_jenkins_passwd.txt
+  - step: 2
+    start: 2026-11-15T10:44:34Z
+    end: 2026-11-15T10:44:34Z
+    target: API
+    cve:
+    technique: T1190
+    outcome: failed
+    achieved: none
+    pivot: false
+    notes: SQLi/traversal requests web->api; API rejected them. evidence s08_api_probe.txt
+  - step: 3
+    start: 2026-11-15T10:44:40Z
+    end: 2026-11-15T10:44:40Z
+    target: Nginx
+    cve:
+    technique: T1595.002
+    outcome: failed
+    achieved: none
+    pivot: false
+    notes: Traversal/XSS/known-bad-path requests web->nginx; no disclosure. evidence s08_nginx_probe.txt
+  - step: 4
+    start: 2026-11-15T10:44:46Z
+    end: 2026-11-15T10:44:47Z
+    target: Web
+    cve: CVE-2024-38476
+    technique: T1190
+    outcome: failed
+    achieved: none
+    pivot: false
+    notes: SQLi-pattern requests to Web's Apache; raised rule 31164 (chains to CVE-2024-38476) but nothing disclosed. evidence s08_web_probe.txt
