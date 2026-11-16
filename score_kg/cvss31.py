@@ -18,7 +18,7 @@ BANDS = [(9.0, "Critical"), (7.0, "High"), (4.0, "Medium"), (0.1, "Low"), (0.0, 
 
 
 def band(score: float) -> str:
-    """CVSS v3.1 qualitative rating (paper Eq. 17; 0 is None)."""
+    """CVSS v3.1 qualitative rating (paper Eq. 18; 0 is None)."""
     for low, name in BANDS:
         if score >= low:
             return name

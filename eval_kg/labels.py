@@ -41,6 +41,7 @@ def load_scenarios(folder: Path) -> list[dict]:
             steps.append({**s, "start": parse_time(s["start"]), "end": parse_time(s["end"]),
                           "cve": (s.get("cve") or "").upper() or None, "grade": grade(s)})
         scenarios.append({"id": doc.get("id", f.stem), "file": f.name, "synthetic": bool(doc.get("synthetic")),
+                          "attacker": doc.get("attacker"), "description": doc.get("description", ""),
                           "start": parse_time(doc.get("start") or min(s["start"] for s in steps)),
                           "end": parse_time(doc.get("end") or max(s["end"] for s in steps)), "steps": steps})
     return scenarios

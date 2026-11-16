@@ -58,8 +58,10 @@ def test_variants_relations():
 
 def test_variant_propagation_matches_model():
     crit = {"a": 1.0, "b": 0.5, "c": 1.0, "d": 1.0}
-    dist = variants.distances_for_p(G, "a", "B4")
-    assert variants.propagation(dist, crit, 0.5) == model.propagation(EDGES, "a", crit, 0.5)
+    for mode in ("compromise", "disruption"):
+        for h in ZONE:
+            dist = variants.distances_for_p(G, h, "B4", mode)
+            assert variants.propagation(dist, crit, 0.5) == model.propagation(EDGES, h, crit, 0.5, mode)
     assert variants.propagation({}, crit, 0.5) == 0.0
 
 
@@ -80,7 +82,9 @@ def test_baselines():
     item = {"cve": "CVE-2024-0001", "cvss3_vector": FULL, "kev": True, "ssvc_exploitation": "active",
             "ssvc_automatable": "yes", "ssvc_technical_impact": "total", "rule_level": 7}
     b = ladder.baselines(item, asset, {"CVE-2024-0001": (0.9, 0.99)})
-    assert b == {"EPSS": 0.99, "KEV": 1.0, "SSVC": 3.0, "Wazuh": 7}
+    rnd = b.pop("Random")
+    assert b == {"EPSS": 0.99, "KEV": 1.0, "SSVC": 3.0, "Wazuh": 7, "WazuhVD": 9.8, "wazuh_vd_fallback": True}
+    assert 0.0 <= rnd <= 1.0 and rnd == ladder.baselines(item, asset, {})["Random"]   # reproducible
 
 
 # --- labels ---------------------------------------------------------------------------------------------------
@@ -105,3 +109,57 @@ def test_pentest_results_skip_not_tried(tmp_path):
     f = tmp_path / "r.csv"
     f.write_text("# c\nasset,cve,exploited\nJenkins,cve-2024-23897,yes\nWeb,CVE-1,no\nAPI,CVE-2,not_tried\n", encoding="utf-8")
     assert labels.load_pentest_results(f) == {("Jenkins", "CVE-2024-23897"): 1, ("Web", "CVE-1"): 0}
+
+
+# --- tie-aware metrics and the A4 helpers (docs/PLAN.md §9) --------------------------------------------
+def _items(scores_grades):
+    return [{"id": f"i{n}", "s": s, "grade": g} for n, (s, g) in enumerate(scores_grades)]
+
+
+def test_tie_aware_ndcg_does_not_reward_the_id_order():
+    # the positive is tied with two negatives: id order would put it first (NDCG 1), random order averages
+    items = [{"id": "a", "s": 9.8, "grade": 1}, {"id": "b", "s": 9.8, "grade": 0}, {"id": "c", "s": 9.8, "grade": 0}]
+    g = metrics.tie_groups(items, "s")
+    exact = (1 + 1 / math.log2(3) + 1 / math.log2(4)) / 3
+    assert metrics.ndcg_at_k(metrics.ranked(items, "s"), 10) == 1.0
+    assert abs(metrics.expected_ndcg_at_k(g, 10) - exact) < 1e-12
+    mc = metrics.expected(g, lambda r: metrics.ndcg_at_k(r, 10), 4000, 1)
+    assert abs(mc - exact) < 0.02
+    assert metrics.expected_ndcg_at_k(metrics.tie_groups(_items([(2, 1), (1, 0)]), "s"), 10) == 1.0
+
+
+def test_expected_precision_and_average_precision():
+    g = metrics.tie_groups(_items([(5, 1), (5, 0), (1, 1)]), "s")
+    assert metrics.expected_precision_at_k(g, 1, 1) == 0.5
+    assert metrics.expected_precision_at_k(g, 3, 1) == 2 / 3
+    assert metrics.average_precision([1, 0, 1], 1) == (1 + 2 / 3) / 2
+    assert metrics.average_precision([0, 0], 1) is None
+
+
+def test_evs_ties_at_the_cap_are_ordered_by_the_uncapped_product():
+    items = [{"id": "a", "L4": 10.0, "L4_raw": 11.2, "grade": 0}, {"id": "b", "L4": 10.0, "L4_raw": 12.5, "grade": 1},
+             {"id": "c", "L4": 9.1, "L4_raw": 9.05, "grade": 0}]
+    assert metrics.tie_groups(items, "L4") == [[1], [0], [0]]
+    lv = ladder.levels({"cve": "C", "cvss3_vector": FULL, "kev": True, "alerted": True},
+                       {"cr": "H", "ir": "H", "ar": "H"}, True, 0.75, 0.5)
+    assert lv["L4"] == 10.0 and lv["L4_raw"] > 10.0
+
+
+def test_pooled_prf_gives_no_free_credit_for_empty_sets():
+    assert metrics.pooled_prf([(set(), set()), (set(), {"x"})]) == (None, 0.0, None)
+    assert metrics.pooled_prf([({"a"}, {"a"}), ({"b"}, set())]) == (0.5, 1.0, 2 * 0.5 / 1.5)
+
+
+def test_stratified_bootstrap_keeps_every_resample():
+    units = [{"grade": 1}] + [{"grade": 0}] * 9
+    ok = lambda s: 1.0 if any(u["grade"] for u in s) else None
+    plain = metrics.paired_bootstrap(units, ok, lambda s: 0.0, 300, 3)
+    strat = metrics.paired_bootstrap(units, ok, lambda s: 0.0, 300, 3, lambda u: u["grade"])
+    assert plain["n"] < 300 and strat["n"] == 300
+
+
+def test_pair_concordance_counts_ties_as_half():
+    from eval_kg.run import _pair_concordance
+    items = [{"L0": 5, "L4": 7, "grade": 2}, {"L0": 5, "L4": 4, "grade": 0}, {"L0": 5, "L4": 4, "grade": 1}]
+    assert _pair_concordance(items, "L0") == (0.5, 0, 3, 0)
+    assert _pair_concordance(items, "L4") == ((2 + 0.5) / 3, 2, 1, 0)

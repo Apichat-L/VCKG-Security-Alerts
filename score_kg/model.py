@@ -4,9 +4,10 @@
     m(c)     impact mode: compromise if the CVSS C or I impact is not None, otherwise disruption
     BR_k     blast radius: BFS over G_R to depth k, out-edges for compromise, in-edges for disruption (Eqs. 7-9)
     Env      CVSS v3.1 Environmental score with graph-derived metrics (Eqs. 10-13, Table I; cvss31.py)
-    crit(v)  max(CR, IR, AR) - 0.5 with weights H 1.5, M 1.0, L 0.5  ->  H 1, M 0.5, L 0 (Eq. 14)
-    P(u)     1/(|V_A| - 1) * sum over v reachable from u of crit(v) * gamma^d(u,v) (Eq. 15)
-    EVS      min(10, Env * (1 + beta * P(u)))  (Eq. 16), level by the CVSS qualitative scale (Eq. 17)
+    crit(v)  max(CR, IR, AR) - 0.5 with weights H 1.5, M 1.0, L 0.5  ->  H 1, M 0.5, L 0 (Eq. 15)
+    P(a,c)   1 - prod over v in BR_k(a,c) minus a of (1 - crit(v) * gamma^d_c(a,v))  (Eq. 16, noisy-OR over the
+             blast radius: the chance that at least one critical asset in the affected zone is hit)
+    EVS      min(10, Env * (1 + beta * P(a,c)))  (Eq. 17), level by the CVSS qualitative scale (Eq. 18)
 """
 import math
 from collections import deque
@@ -17,7 +18,7 @@ WEIGHT = {"H": 1.5, "M": 1.0, "L": 0.5}           # CVSS v3.1 security-requireme
 
 
 def crit(cr: str, ir: str, ar: str) -> float:
-    """Eq. 14: the asset's highest security requirement, normalised to [0, 1]."""
+    """Eq. 15: the asset's highest security requirement, normalised to [0, 1]."""
     return max(WEIGHT[cr], WEIGHT[ir], WEIGHT[ar]) - 0.5
 
 
@@ -62,13 +63,24 @@ def blast_radius(edges: set[tuple[str, str]], asset: str, mode: str, k: int = 1)
     return distances(edges, asset, reverse=(mode == "disruption"), k=k)
 
 
-def propagation(edges: set[tuple[str, str]], asset: str, crit_of: dict[str, float], gamma: float) -> float:
-    """Eq. 15: discounted criticality of every asset reachable from `asset`, divided by |V_A| - 1."""
-    others = len(crit_of) - 1
-    if others <= 0:
-        return 0.0
-    dist = distances(edges, asset)
-    return sum(crit_of[v] * gamma ** d for v, d in dist.items() if v != asset) / others
+def propagation_terms(edges: set[tuple[str, str]], asset: str, crit_of: dict[str, float], gamma: float,
+                      mode: str = "compromise", k: int = 1) -> list[dict]:
+    """The factors of Eq. 16: each v in BR_k(a, c) other than a, with its discounted criticality crit(v) * gamma^d."""
+    br = blast_radius(edges, asset, mode, k)
+    return [{"asset": v, "hops": d, "crit": crit_of[v], "term": crit_of[v] * gamma ** d}
+            for v, d in sorted(br.items(), key=lambda x: (x[1], x[0])) if v != asset]
+
+
+def propagation(edges: set[tuple[str, str]], asset: str, crit_of: dict[str, float], gamma: float,
+                mode: str = "compromise", k: int = 1) -> float:
+    """Eq. 16: noisy-OR of the discounted criticality of the assets in the blast radius BR_k(a, c).
+
+    P = 1 - prod(1 - crit(v) * gamma^d). In [0, 1): 0 when nothing critical is affected, rising with each further
+    critical asset with diminishing returns; independent of the network size and direction-aware through m(c)."""
+    q = 1.0
+    for t in propagation_terms(edges, asset, crit_of, gamma, mode, k):
+        q *= 1 - t["term"]
+    return 1 - q
 
 
 def roundup(x: float) -> float:
@@ -77,8 +89,14 @@ def roundup(x: float) -> float:
     return i / 100000.0 if i % 10000 == 0 else (math.floor(i / 10000) + 1) / 10.0
 
 
+def evs_uncapped(env: float, p: float, beta: float) -> float:
+    """Env * (1 + beta * P) before the cap of Eq. 17. Used only to order scores tied at 10 (the reported EVS stays
+    capped): within the Critical band, the instance with the larger uncapped product ranks first."""
+    return env * (1 + beta * p)
+
+
 def evs(env: float, p: float, beta: float) -> float:
-    """Eq. 16 (rounded up to one decimal, like every CVSS score)."""
+    """Eq. 17 (rounded up to one decimal, like every CVSS score)."""
     return min(10.0, roundup(env * (1 + beta * p)))
 
 
@@ -97,5 +115,6 @@ def score(asset: dict, vuln: dict, internet_path: bool, p: float, beta: float, a
         "AV": cvss31.metrics(vuln["cvss3_vector"]).get("AV"), "MAV": mav, "E": e, "E_reason": e_reason,
         "CR": asset["cr"], "IR": asset["ir"], "AR": asset["ar"], "internet_path": internet_path,
         "env_vector": env["vector"], "env": env["environmental"], "P": round(p, 4),
-        "evs": value, "level": cvss31.band(value), "impact_mode": impact_mode(vuln["cvss3_vector"]),
+        "evs": value, "evs_raw": round(evs_uncapped(env["environmental"], p, beta), 4),
+        "level": cvss31.band(value), "impact_mode": impact_mode(vuln["cvss3_vector"]),
     }

@@ -37,11 +37,11 @@ def baselines(vuln: dict, asset: dict, epss_scores: dict) -> dict:
 # ------------------------------------------------------------------------------------------- asset x CVE
 def score_vulns(g: graph.VCKG, beta: float, gamma: float, epss_scores: dict | None = None) -> list[dict]:
     """EVS of every vulnerability present on every asset, with no alert (E = Not Defined)."""
-    p = {h: g.propagation(h, gamma) for h in g.assets}
     rows = []
     for v in g.vulns:
         asset = g.assets[v["asset"]]
-        row = model.score(asset, v, g.internet_path(v["asset"]), p[v["asset"]], beta, alerted=False)
+        p = g.propagation_for(v["asset"], v["cvss3_vector"], gamma)
+        row = model.score(asset, v, g.internet_path(v["asset"]), p, beta, alerted=False)
         row.update(software=v["software"], source=v["via"])
         if epss_scores is not None:
             row.update(baselines(v, asset, epss_scores))
@@ -98,7 +98,7 @@ def score_alerts(g: graph.VCKG, beta: float, gamma: float, k: int, epss_scores: 
                             "why": "CVE not in the CTI graph" if not vuln else "CVE has no CVSS v3.1 vector"})
             continue
         asset = g.assets[asset_name]
-        p = g.propagation(asset_name, gamma)
+        p = g.propagation_for(asset_name, vuln["cvss3_vector"], gamma, k)
         row = model.score(asset, vuln, g.internet_path(asset_name), p, beta, alerted=True)
         br = model.blast_radius(g.edges, asset_name, row["impact_mode"], k)
         ctx, (first, last) = ctxs[0], _times(ctxs)
@@ -120,7 +120,7 @@ def score_alerts(g: graph.VCKG, beta: float, gamma: float, k: int, epss_scores: 
             "baselines": baselines(vuln, asset, epss_scores),
         })
         scored.append(row)
-    scored.sort(key=lambda r: (-r["evs"], -r["cvss_base"], r["asset"]))
+    scored.sort(key=lambda r: (-r["evs"], -r["evs_raw"], -r["cvss_base"], r["asset"]))
     unscored_rows = []
     for (asset_name, rule), ctxs in unscored.items():
         al, (first, last) = ctxs[0]["alert"], _times(ctxs)
@@ -236,13 +236,13 @@ def write_report(g, meta, vuln_rows, scored, unscored, skipped, beta, gamma, k) 
          f"| EPSS (baseline only, not in the EVS) | model {meta.get('model_version', '-')}, {meta.get('score_date', '-')[:10]} |",
          "",
          "`EVS(c,u) = min(10, Env(c,u) · (1 + β·P(u)))`. Env is the CVSS v3.1 Environmental score with CR/IR/AR of the "
-         "asset, MAV from Internet reachability of its zone, and E = H for the alerted CVE or from KEV/SSVC exploitation otherwise. P(u) is the "
-         "discounted criticality of the assets reachable from u.", ""]
+         "asset, MAV from Internet reachability of its zone, and E = H for the alerted CVE or from KEV/SSVC exploitation otherwise. P(a,c) is the "
+         "noisy-OR of the discounted criticality of the assets in the blast radius BR_k(a,c).", ""]
 
     # ---- 1. alerted vulnerability instances
     L += ["## 1. Alerted vulnerabilities, by EVS", "",
           "One row per vulnerability instance (a, c): an alert that reports CVE c on asset a.", "",
-          "| # | EVS (level) | CVSS base (band) | Env | P(u) | CVE | Asset (zone) | On asset per graph | Blast radius (k=%d) | Event | Count |" % k,
+          "| # | EVS (level) | CVSS base (band) | Env | P(a,c) | CVE | Asset (zone) | On asset per graph | Blast radius (k=%d) | Event | Count |" % k,
           "|---:|---|---|---:|---:|---|---|---|---|---|---:|"]
     for i, r in enumerate(scored, 1):
         L.append(f"| {i} | **{r['evs']}** ({r['level']}) | {r['cvss_base']} ({r['base_band']}) | {r['env']} | {r['P']:.3f} | "
@@ -267,7 +267,7 @@ def write_report(g, meta, vuln_rows, scored, unscored, skipped, beta, gamma, k) 
               f"- **Environmental metrics (Table I):** E = {r['E']} ({r['E_reason']}); "
               f"MAV = {r['MAV']} (base AV {r['AV']}; zone {a['zone']} {'is' if r['internet_path'] else 'is not'} reachable from the Internet); "
               f"CR/IR/AR = {r['CR']}/{r['IR']}/{r['AR']}. Vector `{r['env_vector']}` → **Env {r['env']}**.",
-              f"- **Propagation:** P({r['asset']}) = {r['P']:.4f} → EVS = min(10, {r['env']} × (1 + {beta:g} × {r['P']:.4f})) = **{r['evs']}**.",
+              f"- **Propagation:** P({r['asset']}, {r['cve']}) = {r['P']:.4f} → EVS = min(10, {r['env']} × (1 + {beta:g} × {r['P']:.4f})) = **{r['evs']}**.",
               f"- **Blast radius BR_{k}** (impact mode *{r['impact_mode']}*: "
               f"{'assets it can reach' if r['impact_mode'] == 'compromise' else 'assets that depend on it'}):", "",
               "| Asset | Hops | Zone | Role | CR/IR/AR | crit |", "|---|---:|---|---|---|---:|"]
@@ -297,11 +297,11 @@ def write_report(g, meta, vuln_rows, scored, unscored, skipped, beta, gamma, k) 
     for r in vuln_rows:
         by_asset[r["asset"]].append(r)
     L += ["", "## 4. Assets (vulnerabilities present, no alert: E = X)", "",
-          "| Asset | Zone | CR/IR/AR | Internet path | P(u) | CVEs | Highest CVSS base | Highest EVS |",
+          "| Asset | Zone | CR/IR/AR | Internet path | max P | CVEs | Highest CVSS base | Highest EVS |",
           "|---|---|---|---|---:|---:|---:|---:|"]
     for h, a in sorted(g.assets.items(), key=lambda x: -max((r["evs"] for r in by_asset[x[0]]), default=0)):
         rows = by_asset[h]
-        p = rows[0]["P"] if rows else g.propagation(h, gamma)
+        p = max((r["P"] for r in rows), default=g.propagation(h, gamma))
         L.append(f"| {h} | {a['zone']} | {a['cr']}/{a['ir']}/{a['ar']} | {'yes' if h and g.internet_path(h) else 'no'} | "
                  f"{p:.3f} | {len(rows)} | {max((r['cvss_base'] for r in rows), default='-')} | "
                  f"{max((r['evs'] for r in rows), default='-')} |")

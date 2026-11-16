@@ -12,16 +12,20 @@ CRIT = {"a": 1.0, "b": 0.5, "c": 1.0, "d": 1.0}
 
 
 @pytest.mark.parametrize("asset", ["a", "b", "c", "d"])
-def test_p_terms_add_up_to_the_propagation(asset):
-    terms = explain.p_terms(EDGES, asset, CRIT, 0.5)
-    assert sum(t["term"] for t in terms) == pytest.approx(model.propagation(EDGES, asset, CRIT, 0.5))
+def test_p_terms_combine_to_the_propagation(asset):
+    for mode in ("compromise", "disruption"):
+        q = 1.0
+        for t in explain.p_terms(EDGES, asset, CRIT, 0.5, mode, 2):
+            q *= 1 - t["term"]
+        assert 1 - q == pytest.approx(model.propagation(EDGES, asset, CRIT, 0.5, mode, 2))
 
 
-def test_p_terms_list_reachable_assets_by_distance_without_the_asset_itself():
-    terms = explain.p_terms(EDGES, "a", CRIT, 0.5)
+def test_p_terms_list_blast_radius_by_distance_without_the_asset_itself():
+    assert [(t["asset"], t["hops"]) for t in explain.p_terms(EDGES, "a", CRIT, 0.5)] == [("b", 1)]
+    terms = explain.p_terms(EDGES, "a", CRIT, 0.5, k=2)
     assert [(t["asset"], t["hops"]) for t in terms] == [("b", 1), ("c", 2)]
-    assert explain.term_text(terms[1], 0.5, 3) == "c: crit 1 × 0.5^2 / 3 = 0.0833"
-    assert explain.p_terms(EDGES, "a", {"a": 1.0}, 0.5) == []          # a single asset: nothing to propagate to
+    assert explain.term_text(terms[1], 0.5) == "c: crit 1 × 0.5^2 = 0.2500"
+    assert explain.p_terms(EDGES, "c", CRIT, 0.5) == []                 # c reaches nothing
 
 
 def test_score_props_carry_every_intermediate_value_as_neo4j_types():
@@ -34,6 +38,6 @@ def test_score_props_carry_every_intermediate_value_as_neo4j_types():
     assert props["name"] == f"CVE-1 @ a: EVS {row['evs']} ({row['level']})"
     assert props["blast_radius"] == ["a (0 hops)", "b (1 hop)"]
     assert props["evs_formula"].endswith(f"= {row['evs']}")
-    assert len(props["P_terms"]) == 2
+    assert len(props["P_terms"]) == 1
     for v in props.values():          # Neo4j properties: primitives or lists of primitives
         assert isinstance(v, (str, int, float, bool)) or (isinstance(v, list) and all(isinstance(x, (str, int, float)) for x in v))

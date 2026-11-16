@@ -7,8 +7,8 @@
     B3  ours, undirected: CONNECTS_TO edges allowed by the zone policy, in either direction (no impact mode)
     B4  ours (paper Algorithm 1): E_R in the direction of the impact mode, k = 1
     B5  ours at k = 2 and k = 3
-`distances_for_p` gives each variant's reachable set with hop distances for P(u) (Eq. 16), unbounded where the
-variant has no depth of its own.
+`distances_for_p` gives the set each variant would feed into P(a, c) (Eq. 16, noisy-OR over the blast radius):
+the variant's own predicted set, so the "downstream" comparison really changes the EVS.
 """
 from score_kg import model
 
@@ -67,19 +67,14 @@ def predict(g, host: str, mode: str, variant: str, session=None) -> tuple[dict, 
     raise ValueError(variant)
 
 
-def distances_for_p(g, host: str, variant: str, session=None) -> dict:
-    """Reachable assets with hop distance, as each variant would feed P(u) (compromise direction)."""
-    if variant == "B0":
-        return {}
-    if variant.startswith("B1"):
-        return unrestricted(session, host, int(variant[-2]))[0]
-    if variant == "B2":
-        return zone_level(g, host, "compromise")
-    if variant == "B3":
-        return undirected(g, host, None)
-    return ours(g, host, "compromise", None)          # B4, B5: the paper's R(u) is unbounded
+def distances_for_p(g, host: str, variant: str, mode: str = "compromise", session=None) -> dict:
+    """The blast radius (assets with hop distance) each variant would feed into P(a, c) for impact mode `mode`."""
+    return predict(g, host, mode, variant, session)[0]
 
 
 def propagation(dist: dict, crit: dict, gamma: float) -> float:
-    others = len(crit) - 1
-    return sum(crit[v] * gamma ** d for v, d in dist.items()) / others if others > 0 else 0.0
+    """Eq. 16 on a given set: 1 - prod(1 - crit(v) * gamma^d)."""
+    q = 1.0
+    for v, d in dist.items():
+        q *= 1 - crit[v] * gamma ** d
+    return 1 - q

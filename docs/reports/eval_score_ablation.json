@@ -1,76 +1,102 @@
 {
- "generated": "2026-11-15",
+ "generated": "2026-11-17",
  "beta": 0.5,
  "gamma": 0.5,
  "synthetic": false,
  "sets": {
   "A1": {
    "title": "A1. Vulnerabilities on assets (asset \u00d7 CVE, no alert)",
-   "note": "6 labelled pairs from `pentest_results.csv` (1 exploited); `not_tried` pairs are left out. Relevance = exploited (1/0). Bootstrap resamples pairs.",
+   "note": "9 labelled pairs from `pentest_results.csv` (1 exploited); `not_tried` pairs are left out. Relevance = exploited (1/0). Bootstrap resamples pairs. Origin: 0 drawn by the sampler (`pentest_candidates.csv`), 9 hand-picked. WazuhVD: 2 pairs reported by Wazuh, 7 not (CVSS base used).",
    "scores": {
     "L0": {
-     "NDCG@5": 1.0,
-     "NDCG@10": 1.0,
+     "NDCG@5": 0.7103099178571525,
+     "NDCG@10": 0.7103099178571525,
      "P@5": 0.2,
      "P@10": 0.1,
-     "first": 1,
-     "MRR": 1.0
+     "first": 2.025,
+     "MRR": 0.6058333333333333,
+     "AP": 0.6058333333333333
     },
     "L1": {
-     "NDCG@5": 1.0,
-     "NDCG@10": 1.0,
+     "NDCG@5": 0.7103099178571525,
+     "NDCG@10": 0.7103099178571525,
      "P@5": 0.2,
      "P@10": 0.1,
-     "first": 1,
-     "MRR": 1.0
+     "first": 2.015,
+     "MRR": 0.6025,
+     "AP": 0.6025
     },
     "L2": {
-     "NDCG@5": 1.0,
-     "NDCG@10": 1.0,
+     "NDCG@5": 0.7103099178571525,
+     "NDCG@10": 0.7103099178571525,
      "P@5": 0.2,
      "P@10": 0.1,
-     "first": 1,
-     "MRR": 1.0
+     "first": 2.045,
+     "MRR": 0.5958333333333333,
+     "AP": 0.5958333333333333
     },
     "L3": {
      "NDCG@5": 1.0,
      "NDCG@10": 1.0,
      "P@5": 0.2,
      "P@10": 0.1,
-     "first": 1,
-     "MRR": 1.0
+     "first": 1.0,
+     "MRR": 1.0,
+     "AP": 1.0
     },
     "L4": {
      "NDCG@5": 1.0,
      "NDCG@10": 1.0,
      "P@5": 0.2,
      "P@10": 0.1,
-     "first": 1,
-     "MRR": 1.0
+     "first": 1.0,
+     "MRR": 1.0,
+     "AP": 1.0
     },
     "EPSS": {
      "NDCG@5": 1.0,
      "NDCG@10": 1.0,
      "P@5": 0.2,
      "P@10": 0.1,
-     "first": 1,
-     "MRR": 1.0
+     "first": 1.0,
+     "MRR": 1.0,
+     "AP": 1.0
     },
     "KEV": {
      "NDCG@5": 1.0,
      "NDCG@10": 1.0,
      "P@5": 0.2,
      "P@10": 0.1,
-     "first": 1,
-     "MRR": 1.0
+     "first": 1.0,
+     "MRR": 1.0,
+     "AP": 1.0
     },
     "SSVC": {
      "NDCG@5": 1.0,
      "NDCG@10": 1.0,
      "P@5": 0.2,
      "P@10": 0.1,
-     "first": 1,
-     "MRR": 1.0
+     "first": 1.0,
+     "MRR": 1.0,
+     "AP": 1.0
+    },
+    "WazuhVD": {
+     "NDCG@5": 0.7103099178571525,
+     "NDCG@10": 0.7103099178571525,
+     "P@5": 0.2,
+     "P@10": 0.1,
+     "first": 2.025,
+     "MRR": 0.6058333333333333,
+     "AP": 0.6058333333333333
+    },
+    "Random": {
+     "NDCG@5": 0.43067655807339306,
+     "NDCG@10": 0.43067655807339306,
+     "P@5": 0.2,
+     "P@10": 0.1,
+     "first": 4.0,
+     "MRR": 0.25,
+     "AP": 0.25
     }
    },
    "gains": {
@@ -78,215 +104,61 @@
      "diff": 0.0,
      "lo": 0.0,
      "hi": 0.0,
-     "n": 664
+     "n": 1000
     },
     "L2 \u2212 L1": {
      "diff": 0.0,
      "lo": 0.0,
      "hi": 0.0,
-     "n": 664
+     "n": 1000
     },
     "L3 \u2212 L2": {
-     "diff": 0.0,
+     "diff": 0.2896900821428475,
      "lo": 0.0,
-     "hi": 0.0,
-     "n": 664
+     "hi": 0.4103081762241215,
+     "n": 1000
     },
     "L4 \u2212 L3": {
      "diff": 0.0,
      "lo": 0.0,
      "hi": 0.0,
-     "n": 664
+     "n": 1000
     },
     "L4 \u2212 EPSS": {
      "diff": 0.0,
      "lo": 0.0,
      "hi": 0.0,
-     "n": 664
+     "n": 1000
     },
     "L4 \u2212 KEV": {
      "diff": 0.0,
      "lo": 0.0,
      "hi": 0.0,
-     "n": 664
+     "n": 1000
     },
     "L4 \u2212 SSVC": {
      "diff": 0.0,
      "lo": 0.0,
      "hi": 0.0,
-     "n": 664
+     "n": 1000
+    },
+    "L4 \u2212 WazuhVD": {
+     "diff": 0.2896900821428475,
+     "lo": 0.0,
+     "hi": 0.4103081762241215,
+     "n": 1000
+    },
+    "L4 \u2212 Random": {
+     "diff": 0.5693234419266069,
+     "lo": 0.0,
+     "hi": 0.6666666666666667,
+     "n": 1000
     }
    },
-   "n_items": 6,
-   "n_positive": 1
-  },
-  "A2": {
-   "title": "A2. Alerted vulnerability instances, per pentest scenario",
-   "note": "5 scenarios, 6 instances in their time windows. Grades 3/2/1/0 from the pentest record. Metrics averaged over scenarios; bootstrap over scenarios.",
-   "scores": {
-    "L0": {
-     "NDCG@5": 1.0,
-     "NDCG@10": 1.0,
-     "P@5": 0.04,
-     "P@10": 0.02,
-     "MRR": 0.2,
-     "first": 1.0
-    },
-    "L1": {
-     "NDCG@5": 1.0,
-     "NDCG@10": 1.0,
-     "P@5": 0.04,
-     "P@10": 0.02,
-     "MRR": 0.2,
-     "first": 1.0
-    },
-    "L2": {
-     "NDCG@5": 1.0,
-     "NDCG@10": 1.0,
-     "P@5": 0.04,
-     "P@10": 0.02,
-     "MRR": 0.2,
-     "first": 1.0
-    },
-    "L3": {
-     "NDCG@5": 1.0,
-     "NDCG@10": 1.0,
-     "P@5": 0.04,
-     "P@10": 0.02,
-     "MRR": 0.2,
-     "first": 1.0
-    },
-    "L4": {
-     "NDCG@5": 1.0,
-     "NDCG@10": 1.0,
-     "P@5": 0.04,
-     "P@10": 0.02,
-     "MRR": 0.2,
-     "first": 1.0
-    },
-    "EPSS": {
-     "NDCG@5": 1.0,
-     "NDCG@10": 1.0,
-     "P@5": 0.04,
-     "P@10": 0.02,
-     "MRR": 0.2,
-     "first": 1.0
-    },
-    "KEV": {
-     "NDCG@5": 1.0,
-     "NDCG@10": 1.0,
-     "P@5": 0.04,
-     "P@10": 0.02,
-     "MRR": 0.2,
-     "first": 1.0
-    },
-    "SSVC": {
-     "NDCG@5": 1.0,
-     "NDCG@10": 1.0,
-     "P@5": 0.04,
-     "P@10": 0.02,
-     "MRR": 0.2,
-     "first": 1.0
-    },
-    "Wazuh": {
-     "NDCG@5": 0.8549048706984328,
-     "NDCG@10": 0.8549048706984328,
-     "P@5": 0.04,
-     "P@10": 0.02,
-     "MRR": 0.1,
-     "first": 2.0
-    }
-   },
-   "gains": {
-    "L1 \u2212 L0": {
-     "diff": 0.0,
-     "lo": 0.0,
-     "hi": 0.0,
-     "n": 918
-    },
-    "L2 \u2212 L1": {
-     "diff": 0.0,
-     "lo": 0.0,
-     "hi": 0.0,
-     "n": 918
-    },
-    "L3 \u2212 L2": {
-     "diff": 0.0,
-     "lo": 0.0,
-     "hi": 0.0,
-     "n": 918
-    },
-    "L4 \u2212 L3": {
-     "diff": 0.0,
-     "lo": 0.0,
-     "hi": 0.0,
-     "n": 918
-    },
-    "L4 \u2212 EPSS": {
-     "diff": 0.0,
-     "lo": 0.0,
-     "hi": 0.0,
-     "n": 918
-    },
-    "L4 \u2212 KEV": {
-     "diff": 0.0,
-     "lo": 0.0,
-     "hi": 0.0,
-     "n": 918
-    },
-    "L4 \u2212 SSVC": {
-     "diff": 0.0,
-     "lo": 0.0,
-     "hi": 0.0,
-     "n": 918
-    },
-    "L4 \u2212 Wazuh": {
-     "diff": 0.1450951293015672,
-     "lo": 0.0,
-     "hi": 0.2901902586031345,
-     "n": 918
-    }
-   },
-   "n_scenarios": 5,
-   "n_instances": 6,
-   "scenarios": [
-    {
-     "id": "S04-account-creation",
-     "n": 1,
-     "grades": [
-      0
-     ]
-    },
-    {
-     "id": "S05-ssh-brute-force-pivot",
-     "n": 1,
-     "grades": [
-      0
-     ]
-    },
-    {
-     "id": "S06-smb-credential-stuffing",
-     "n": 1,
-     "grades": [
-      0
-     ]
-    },
-    {
-     "id": "S07-web-probing",
-     "n": 1,
-     "grades": [
-      1
-     ]
-    },
-    {
-     "id": "S08-dmz-web-to-jenkins",
-     "n": 2,
-     "grades": [
-      1,
-      3
-     ]
-    }
-   ]
+   "n_items": 9,
+   "n_positive": 1,
+   "n_sampled": 0,
+   "n_wazuh_vd_fallback": 7
   }
  }
 }

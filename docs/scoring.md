@@ -52,21 +52,29 @@ Roundup.
 | RL, RC | Not Defined |
 | all other metrics | the base values of c |
 
-## 4. Propagation and final score (Eqs. 14–17)
+## 4. Propagation and final score (paper Eqs. 15–18)
 
 ```
-crit(v) = max(CR_v, IR_v, AR_v) − 0.5            weights H 1.5, M 1.0, L 0.5  →  H 1, M 0.5, L 0      (14)
-P(u)    = 1/(|V_A| − 1) · Σ_{v ∈ R(u)\{u}} crit(v) · γ^d(u,v)                                         (15)
-EVS     = min(10, Env(c, u) · (1 + β · P(u)))                                                         (16)
-level   = Critical 9.0–10, High 7.0–8.9, Medium 4.0–6.9, Low 0.1–3.9                                  (17)
+crit(v) = max(CR_v, IR_v, AR_v) − 0.5            weights H 1.5, M 1.0, L 0.5  →  H 1, M 0.5, L 0      (15)
+P(u,c)  = 1 − Π_{v ∈ BR_k(u,c)\{u}} (1 − crit(v) · γ^d_c(u,v))                                        (16)
+EVS     = min(10, Env(c, u) · (1 + β · P(u,c)))                                                       (17)
+level   = Critical 9.0–10, High 7.0–8.9, Medium 4.0–6.9, Low 0.1–3.9                                  (18)
 ```
 
-R(u) is every asset reachable from u in G_R, at any depth, and d(u, v) is the shortest hop distance. Each
-graph signal enters exactly one term. Internet exposure changes only MAV, and lateral reachability changes
-only P(u).
+BR_k(u,c) is the blast radius of Algorithm 1 (k = 1, out-edges for compromise, in-edges for disruption) and
+d_c(u, v) the hop distance in that direction. P is a noisy-OR: 0 when the blast radius holds no critical asset,
+rising with each further critical asset with diminishing returns, always below 1, and independent of the size of
+the network. Each graph signal enters exactly one term. Internet exposure changes only MAV, and lateral
+reachability changes only P(u,c).
 
-Lab example. P(Nginx) = (crit(Web)·γ + crit(API)·γ² + crit(PostgreSQL)·γ³) / 7 = (0.5 + 0.25 + 0.125) / 7 = 0.125.
-With β = 0.5, Nginx's EVS is Env × 1.0625.
+**Changed 2026-11-17** (docs/PLAN.md §9). The earlier Eq. 16 summed over R(u), every asset reachable at any depth,
+divided by |V_A| − 1. In the 17-host lab that capped the uplift at +6% (8 of 17 hosts at P = 0), shrank as hosts
+were added, ignored the impact mode, and contradicted the paper's own statement that BR_1 "forms the input to the
+environmental scoring". The blast radius now feeds the score directly.
+
+Lab example. A compromise-mode CVE on Jenkins: BR_1 = {API, Gitea}, both crit 1, so
+P = 1 − (1 − 0.5)(1 − 0.5) = 0.75 and EVS = Env × 1.375 (β = 0.5). A disruption-mode CVE on the same host:
+BR_1 = {Jump} (it depends on Jenkins), P = 0.5, EVS = Env × 1.25.
 
 ## 5. Choices the paper leaves to the implementation
 
@@ -88,7 +96,7 @@ With β = 0.5, Nginx's EVS is Env × 1.0625.
 
 | Output | Content |
 |---|---|
-| `data/reports/assessments/<asset>_<cve>_<rule>.json` | the structured object of §III.A.4 for each alerted instance: alert, affected asset (with CR/IR/AR and justification), CVE and base CVSS, Env, P(u), EVS, risk level, blast-radius assets with their CIA requirements, mitigations from the VCKG (CWE `MITIGATED_BY`, plus ATT&CK mitigations of the alert's technique). This is the input for the LLM threat report (not implemented yet) |
+| `data/reports/assessments/<asset>_<cve>_<rule>.json` | the structured object of §III.A.4 for each alerted instance: alert, affected asset (with CR/IR/AR and justification), CVE and base CVSS, Env, P(u,c), EVS, risk level, blast-radius assets with their CIA requirements, mitigations from the VCKG (CWE `MITIGATED_BY`, plus ATT&CK mitigations of the alert's technique). This is the input for the LLM threat report (not implemented yet) |
 | `data/reports/threat_report.md` | alerted instances ranked by EVS with every intermediate value, the alerts that report no CVE, assets, and a CVSS band → EVS level matrix |
 | `data/scores/alert_scores.csv`, `asset_cve_scores.csv` | every score and metric. The asset × CVE file also holds EPSS, KEV and CISA SSVC as **baselines** for stage 5; they are not part of the EVS |
 | Neo4j | `Alert.evs`, `evs_level`, `evs_cve`, `blast_radius` |
@@ -105,7 +113,7 @@ calculation for one input and prints every step. It is not part of `score_kg all
 | Tactic | all techniques that `IMPLEMENTS` it (with sub-techniques), then as Technique |
 
 For each target: the 3 shortest attack paths from the Internet zone over `CAN_REACH` (≤ 4 hops). For each
-(target, CVE): `model.score` (E = H when an alert already reports that CVE on that host), the terms of P(u) and BR_k.
+(target, CVE): `model.score` (E = H when an alert already reports that CVE on that host), the terms of P(u,c) and BR_k.
 
 The result goes to Neo4j as its own subgraph. Nothing else reads it. `explain --clear` removes it.
 ```

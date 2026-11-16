@@ -11,7 +11,7 @@ Technique  the technique family (itself, parent, sub-techniques) -> CAPEC -> spe
 Tactic     every technique that IMPLEMENTS it (and their sub-techniques), then as Technique
 
 For each target: shortest attack paths from the Internet zone over CAN_REACH. For each (target, CVE):
-EVS with every intermediate value (model.score), the terms of P(u) (Eq. 15) and the blast radius BR_k.
+EVS with every intermediate value (model.score), the terms of P(a,c) (Eq. 16) and the blast radius BR_k.
 
 The result is printed and written to Neo4j as a separate result subgraph for the Browser:
     (:Analysis)-[:INPUT]->(Vulnerability | Technique | Tactic)
@@ -102,21 +102,16 @@ CALL (s, r) {
 
 
 # ------------------------------------------------------------------------------------------- pure parts
-def p_terms(edges: set, asset: str, crit_of: dict, gamma: float) -> list[dict]:
-    """The terms of Eq. 15 for one asset: each reachable v with crit(v) * gamma^d / (|V_A| - 1).
+def p_terms(edges: set, asset: str, crit_of: dict, gamma: float, mode: str = "compromise", k: int = 1) -> list[dict]:
+    """The factors of Eq. 16: each v in BR_k(a, c) other than a, with crit(v) * gamma^d.
 
-    They add up to model.propagation(edges, asset, crit_of, gamma).
+    model.propagation = 1 - prod(1 - term) over them.
     """
-    others = len(crit_of) - 1
-    if others <= 0:
-        return []
-    dist = model.distances(edges, asset)
-    return [{"asset": v, "hops": d, "crit": crit_of[v], "term": crit_of[v] * gamma ** d / others}
-            for v, d in sorted(dist.items(), key=lambda x: (x[1], x[0])) if v != asset]
+    return model.propagation_terms(edges, asset, crit_of, gamma, mode, k)
 
 
-def term_text(t: dict, gamma: float, n_others: int) -> str:
-    return (f"{t['asset']}: crit {t['crit']:g} × {gamma:g}^{t['hops']} / {n_others} = {t['term']:.4f}")
+def term_text(t: dict, gamma: float, n_others: int = 0) -> str:
+    return (f"{t['asset']}: crit {t['crit']:g} × {gamma:g}^{t['hops']} = {t['term']:.4f}")
 
 
 def score_props(row: dict, analysis_id: str, software: list, techniques: list, cwes: list, capecs: list,
@@ -195,10 +190,10 @@ def explain(kind: str, ident: str, asset_name: str | None = None, beta: float = 
             skipped.append(f"{f['cve']} on {f['asset']}: " + ("not in the CTI graph" if not vuln else "no CVSS v3.1 vector"))
             continue
         h = f["asset"]
-        p = g.propagation(h, gamma)
+        p = g.propagation_for(h, vuln["cvss3_vector"], gamma, k)
         row = model.score(g.assets[h], vuln, g.internet_path(h), p, beta, alerted=(h, f["cve"]) in alerted)
         blast = model.blast_radius(g.edges, h, row["impact_mode"], k)
-        terms = p_terms(g.edges, h, g.crit, gamma)
+        terms = p_terms(g.edges, h, g.crit, gamma, row["impact_mode"], k)
         props = score_props(row, analysis_id, f["software"], f["techniques"], f["cwes"], f["capecs"],
                             f["present"], terms, blast, beta, gamma, k, n_others)
         scores.append({"props": props, "terms": terms, "techniques": f["techniques"],
@@ -266,8 +261,8 @@ def print_result(r: dict) -> None:
               f"     MAV           {p['MAV']} (base AV {p['AV']}; Internet path to zone: {'yes' if p['internet_path'] else 'no'})",
               f"     E             {p['E']} ({p['E_reason']})",
               f"     Env           {p['env_vector']} -> {p['env']}",
-              f"     P(u)          {p['P']:.4f} = sum of:"]
-        L += [f"                     {t}" for t in p["P_terms"]] or ["                     (nothing reachable)"]
+              f"     P(a,c)        {p['P']:.4f} = 1 − ∏(1 − term) over the blast radius:"]
+        L += [f"                     {t}" for t in p["P_terms"]] or ["                     (no other asset in the blast radius)"]
         L += [f"     EVS           {p['evs_formula']} -> {p['level']}",
               f"     blast radius  {', '.join(p['blast_radius'])}"]
     for sk in r["skipped"]:
