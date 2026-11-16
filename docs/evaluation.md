@@ -75,13 +75,18 @@ an intruder or an outage actually affects.
 
 ## Threats to validity (to state in the paper)
 
-- **Small lab:** 8 hosts. The CIs will be wide, and they are reported rather than hidden.
+- **Small lab:** 17 hosts in 5 zones (8 in the runs reported below, before the lab was extended on 2026-11-16). The CIs will be wide, and they are reported rather than hidden.
 - **Labels from the same team:** the pentest is run and recorded by the authors. Grading by outcome rather than by asset value limits, but does not remove, the bias.
 - **Lab-specific ground truth:** the measured sets describe this lab. Another network would need its own measurement, which the scripts automate.
 - **NVD has no feed before 2002:** `cti_kg` covers CVE ids from 1999 on via `cvelistV5`, but NVD's own CVSS/CPE/CWE enrichment (`download_nvd`, clamped to `NVD_FIRST_YEAR = 2002`) only starts at 2002, since NVD publishes no yearly feed before then. A 1999-2001 CVE can still be in the graph with whatever `cvelistV5` alone provides, just without NVD's CVSS vector unless a CNA supplied one.
 - **Usable reach:** it finds what is stored on a host in common places. It is a lower bound on what a skilled intruder could use.
 
 ## Preliminary run (2026-11-14)
+
+> **8-host lab.** Every number in this section was measured on the original 8-host lab (DMZ, APP, DATA,
+> Office). On 2026-11-16 the lab grew to 17 hosts with a new MGMT zone (`lab_env/README.md`). Part B ground
+> truth (`python -m eval_kg measure`), the sensitivity analysis and the reports must be rerun before these
+> numbers are quoted for the 17-host lab.
 
 First end-to-end run of this pipeline against the current scenario set (`evaluation/scenarios/S01-S03.yaml`,
 the real 2026-11-13 pentest). S04-S07 exist only as raw evidence

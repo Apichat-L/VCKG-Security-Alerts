@@ -1,6 +1,7 @@
 #!/bin/sh
 # Lab firewall: routes between the zones and only forwards what lab/zone_edges.csv allows.
-#   internet -> dmz, dmz -> app, app -> data, office -> data
+#   internet -> dmz, dmz -> app, app -> data, office -> data,
+#   office -> mgmt, mgmt -> dmz, mgmt -> app, mgmt -> data   (MGMT: bastion and monitoring, never from the internet)
 # plus every zone -> sec on the Wazuh agent ports (1514 events, 1515 enrollment).
 # Everything else is dropped and logged with the prefix "FW-DROP" (see: docker compose logs firewall
 # does not show kernel logs; use `docker compose exec firewall iptables -vnL FORWARD` for counters).
@@ -15,11 +16,12 @@ DMZ=$(iface 10.10.10.)
 APP=$(iface 10.10.20.)
 DATA=$(iface 10.10.30.)
 OFFICE=$(iface 10.10.40.)
+MGMT=$(iface 10.10.50.)
 SEC=$(iface 10.10.90.)
-for v in INET DMZ APP DATA OFFICE SEC; do
+for v in INET DMZ APP DATA OFFICE MGMT SEC; do
     eval "[ -n \"\$$v\" ]" || { echo "firewall: no interface for $v"; exit 1; }
 done
-echo "firewall: internet=$INET dmz=$DMZ app=$APP data=$DATA office=$OFFICE sec=$SEC"
+echo "firewall: internet=$INET dmz=$DMZ app=$APP data=$DATA office=$OFFICE mgmt=$MGMT sec=$SEC"
 
 ip route replace default via 172.30.0.1 dev "$INET"
 
@@ -44,8 +46,12 @@ allow "$INET" "$DMZ"  "Internet -> DMZ"
 allow "$DMZ"  "$APP"  "DMZ -> APP"
 allow "$APP"  "$DATA" "APP -> DATA"
 allow "$OFFICE" "$DATA" "Office -> DATA"
+allow "$OFFICE" "$MGMT" "Office -> MGMT"
+allow "$MGMT" "$DMZ"  "MGMT -> DMZ"
+allow "$MGMT" "$APP"  "MGMT -> APP"
+allow "$MGMT" "$DATA" "MGMT -> DATA"
 
-for z in "$DMZ" "$APP" "$DATA" "$OFFICE"; do
+for z in "$DMZ" "$APP" "$DATA" "$OFFICE" "$MGMT"; do
     iptables -A FORWARD -i "$z" -o "$SEC" -p tcp -m multiport --dports 1514,1515 \
         -m comment --comment "agent -> wazuh" -j ACCEPT
 done
@@ -53,7 +59,7 @@ done
 iptables -t nat -A POSTROUTING -o "$SEC" -j MASQUERADE
 
 if [ "${FW_ALLOW_EGRESS:-0}" = "1" ]; then   # lab hosts reach the real internet (package updates)
-    for z in "$DMZ" "$APP" "$DATA" "$OFFICE"; do
+    for z in "$DMZ" "$APP" "$DATA" "$OFFICE" "$MGMT"; do
         allow "$z" "$INET" "egress"
     done
     iptables -t nat -A POSTROUTING -o "$INET" ! -d 172.30.0.0/24 -j MASQUERADE

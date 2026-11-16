@@ -47,7 +47,7 @@ Roundup.
 | Metric | Derivation (Table I) |
 |---|---|
 | CR, IR, AR | the attributes of u's Asset node (`lab/assets.csv`, with a justification) |
-| MAV | the base AV if a path of `ALLOWED_TO_REACH` edges, of any length, connects the Internet zone to zone(u). Otherwise AV:N is lowered to A; A, L and P stay as they are. In the lab, DMZ, APP and DATA are reachable (Internet→DMZ→APP→DATA) and Office is not |
+| MAV | the base AV if a path of `ALLOWED_TO_REACH` edges, of any length, connects the Internet zone to zone(u). Otherwise AV:N is lowered to A; A, L and P stay as they are. In the lab, DMZ, APP and DATA are reachable (Internet→DMZ→APP→DATA); Office and MGMT are not (Office→MGMT and MGMT→DMZ/APP/DATA point away from the Internet) |
 | E | first match wins: **H** if an alert reports c on u; **H** if c is in CISA KEV or CISA vulnrichment SSVC `exploitation = active`; **P** if `poc`; **U** if `none`; otherwise Not Defined. See §5 for how this differs from the paper's Table I |
 | RL, RC | Not Defined |
 | all other metrics | the base values of c |

@@ -10,8 +10,11 @@ HARVEST_SH = ROOT / "lab_env" / "eval" / "harvest.sh"
 # Lab hosts: asset hostname (as in lab/assets.csv) -> docker compose service. This only names the hosts; it says
 # nothing about how they depend on each other, which is what the measurements observe.
 SERVICES = {"Nginx": "nginx", "Web": "web", "API": "api", "Jenkins": "jenkins", "PostgreSQL": "postgresql",
-            "Files-SMB": "files-smb", "Admin-PC": "admin-pc", "Dep-PC": "dep-pc"}
-PROBE_PORTS = [22, 80, 443, 445, 3000, 5432, 8080]       # network reachability probe (every port any host serves)
+            "Files-SMB": "files-smb", "Admin-PC": "admin-pc", "Dep-PC": "dep-pc",
+            "DNS": "dns", "Mail": "mail", "HR-App": "hr-app", "Gitea": "gitea", "HR-DB": "hr-db", "Redis": "redis",
+            "Dev-PC": "dev-pc", "Jump": "jump", "Monitoring": "monitoring"}
+# network reachability probe: every TCP port any host serves (DNS also answers on 53/tcp)
+PROBE_PORTS = [22, 25, 53, 80, 143, 443, 445, 3000, 3306, 5432, 6379, 8080]
 
 OBSERVED = ROOT / "data" / "eval"                        # measured ground truth (git-ignored, regenerated)
 OBSERVED_NETWORK = OBSERVED / "observed_network_reach.json"

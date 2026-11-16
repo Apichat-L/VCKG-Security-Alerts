@@ -120,9 +120,9 @@ def fig_sensitivity(se):
     fig = _fig(10.4, 4.0)
     ax1, ax2 = fig.subplots(1, 2, gridspec_kw={"width_ratios": [1.1, 1]})
     _style(ax1, "both")
-    dmz = {"Nginx", "Web"}
+    dmz = {"Nginx", "Web", "DNS", "Mail"}           # the internet-exposed zone (lab/assets.csv)
     groups = [("other assets", GREY, lambda a: a not in dmz and a != "Dep-PC", 0.55),
-              ("DMZ web tier (Nginx, Web)", BLUE, lambda a: a in dmz, 0.8),
+              ("DMZ, internet-exposed (Nginx, Web, DNS, Mail)", BLUE, lambda a: a in dmz, 0.8),
               ("Dep-PC (isolated, L/L/L)", ORANGE, lambda a: a == "Dep-PC", 0.9)]
     for lab, col, pred, alpha in groups:
         pts = [p for p in se["pairs"] if pred(p["asset"])]

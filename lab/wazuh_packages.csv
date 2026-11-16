@@ -7,3 +7,7 @@ nginx,^nginx$
 postgresql,^postgresql-\d+$
 samba,^samba$
 openssh,^openssh-server$
+bind,^bind9$
+postfix,^postfix$
+dovecot,^dovecot-core$
+mariadb,^mariadb-server

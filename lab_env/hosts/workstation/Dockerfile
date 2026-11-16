@@ -1,4 +1,4 @@
-# Office workstation (Admin-PC and Dep-PC share this image; the user comes from the environment).
+# Office workstation (Admin-PC, Dep-PC and Dev-PC share this image; the user comes from the environment).
 # OpenSSH is pinned to Ubuntu 22.04's release build 1:8.9p1-3, which has none of the later security
 # updates -> CPE openbsd:openssh 8.9p1 (CVE-2025-26465, ...).
 FROM ubuntu:22.04

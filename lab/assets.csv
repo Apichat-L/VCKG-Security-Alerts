@@ -1,6 +1,8 @@
 # One row per host. cr / ir / ar = CVSS v3.1 security requirements: L, M or H (all three are mandatory).
 # cr/ir/ar values confirmed as written (2026-11-10). justification: why the team assigned them (paper §III.A.1;
 # first drafted from each host's role, edit as the team agrees).
+# Rows DNS..Monitoring were added on 2026-11-16 (lab extension, MGMT zone): cr/ir/ar drafted from the role, not yet
+# confirmed by the team.
 # ip / os: the Docker lab in lab_env/ (lab_env/docker-compose.yml). Alerts are mapped to assets by IP.
 hostname,role,zone,ip,os,cr,ir,ar,justification
 Nginx,reverse proxy,DMZ,10.10.10.11,Debian 12,M,M,H,Single entry point for all web traffic: an outage stops the shop (AR H); it only relays data (CR M; IR M)
@@ -11,3 +13,12 @@ PostgreSQL,database,DATA,10.10.30.31,Debian 12,H,H,M,Stores customer records and
 Files-SMB,file server,DATA,10.10.30.32,Debian 12,H,M,M,Holds finance documents and salaries (CR H); files are versioned (IR M); internal use only (AR M)
 Admin-PC,workstation,Office,10.10.40.41,Ubuntu 22.04,H,H,L,Administrator workstation with privileged credentials (CR H; IR H); one machine and easily replaced (AR L)
 Dep-PC,workstation,Office,10.10.40.42,Ubuntu 22.04,L,L,L,Ordinary staff workstation with no privileged access or sensitive data (all L)
+DNS,dns server,DMZ,10.10.10.13,Debian 12,L,H,H,Public DNS for lab.local: forged answers send customers and mail to the attacker (IR H) and an outage takes the shop and mail offline (AR H); zone data is meant to be public (CR L)
+Mail,mail server,DMZ,10.10.10.14,Debian 12,H,M,M,Holds all company mailboxes incl. internal correspondence and password resets (CR H); messages can be re-sent (IR M); mail tolerates short delays (AR M)
+HR-App,hr portal,APP,10.10.20.23,Ubuntu 22.04,H,H,L,HR portal showing employee and salary data (CR H) and editing HR records (IR H); internal tool that can be down for a day (AR L)
+Gitea,source control,APP,10.10.20.24,Debian 12,H,H,M,Source code and deployment configs of every application (CR H); a tampered repository flows into each build (IR H); development pauses but nothing customer-facing stops (AR M)
+HR-DB,database,DATA,10.10.30.33,Ubuntu 22.04,H,H,M,Employee records with salaries and bank accounts (CR H; IR H); restored from nightly backups (AR M)
+Redis,cache,DATA,10.10.30.34,Debian 12,M,M,M,Cache and sessions for the Git server: session tokens (CR M); cached entries can be rebuilt (IR M); an outage degrades Gitea (AR M)
+Dev-PC,workstation,Office,10.10.40.43,Ubuntu 22.04,M,M,L,Developer workstation with source checkouts but no admin rights (CR M; IR M); one machine and easily replaced (AR L)
+Jump,bastion,MGMT,10.10.50.51,Debian 12,H,H,M,Administrators' bastion with sudo and saved access to the admin consoles in every zone (CR H; IR H); admins can wait for a rebuild (AR M)
+Monitoring,monitoring,MGMT,10.10.50.52,Ubuntu 22.04,M,M,L,Grafana with read access to the shop database: dashboards show business data (CR M); wrong graphs mislead operators (IR M); not needed for operations (AR L)

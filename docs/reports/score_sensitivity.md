@@ -1,5 +1,7 @@
 # Sensitivity of the EVS to β and γ
 
+> **8-host lab.** Generated on the original 8-host lab, before it grew to 17 hosts and a MGMT zone on 2026-11-16 (`lab_env/README.md`). The numbers below are unchanged; rerun the generating command to update them.
+
 Generated 2026-11-15 by `python -m score_kg sensitivity`. Reference: β = 0.5, γ = 0.5. 287 asset × CVE pairs, no alert (E = X).
 
 Kendall τ-b against the reference: min 0.906, max 1.000.

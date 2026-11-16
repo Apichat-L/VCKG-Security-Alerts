@@ -1,0 +1,24 @@
+; lab.local: names of the lab hosts (lab/assets.csv). Dummy zone, lab only.
+$TTL 300
+@           IN SOA  dns.lab.local. hostmaster.lab.local. ( 2026111601 3600 600 86400 300 )
+            IN NS   dns.lab.local.
+            IN MX   10 mail.lab.local.
+dns         IN A    10.10.10.13
+mail        IN A    10.10.10.14
+nginx       IN A    10.10.10.11
+shop        IN A    10.10.10.11
+www         IN CNAME shop
+web         IN A    10.10.10.12
+api         IN A    10.10.20.21
+jenkins     IN A    10.10.20.22
+hr          IN A    10.10.20.23
+git         IN A    10.10.20.24
+db          IN A    10.10.30.31
+files       IN A    10.10.30.32
+hr-db       IN A    10.10.30.33
+redis       IN A    10.10.30.34
+admin-pc    IN A    10.10.40.41
+dep-pc      IN A    10.10.40.42
+dev-pc      IN A    10.10.40.43
+jump        IN A    10.10.50.51
+grafana     IN A    10.10.50.52

@@ -1,5 +1,6 @@
 #!/bin/sh
 # Create the workstation user (with dummy documents), then run sshd in the foreground.
+# Shared by the Office workstations and the MGMT bastion (hosts/jump).
 #   PC_USER / PC_PASSWORD   login account,   PC_ADMIN=1   gives it sudo (Admin-PC)
 set -eu
 USER_NAME="${PC_USER:-user}"
@@ -27,6 +28,21 @@ if [ -n "${SMB_SHARE:-}" ]; then
 exec smbclient "$SMB_SHARE" -A "$creds" -c ls
 EOF
     chmod +x /lab/check-share.sh
+fi
+
+# Admin tools this host relies on (Jump -> Jenkins, Jump -> HR-App): saved as the user's bookmarks, and a
+# check that they answer.   LAB_URLS = space-separated URLs
+if [ -n "${LAB_URLS:-}" ]; then
+    marks="/home/$USER_NAME/Documents/bookmarks.txt"
+    mkdir -p "$(dirname "$marks")"
+    printf '%s\n' $LAB_URLS > "$marks"
+    chown -R "$USER_NAME:$USER_NAME" "$(dirname "$marks")"
+    cat > /lab/check-urls.sh <<EOF
+#!/bin/sh
+# open every saved admin URL (lab_env/eval health check)
+for u in $LAB_URLS; do curl -fsS -m 8 -o /dev/null "\$u" || exit 1; done
+EOF
+    chmod +x /lab/check-urls.sh
 fi
 
 mkdir -p /run/sshd

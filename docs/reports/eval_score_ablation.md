@@ -1,5 +1,7 @@
 # Evaluation, Part A: score ablation (L0 → L4) against pentest ground truth
 
+> **8-host lab.** Generated on the original 8-host lab, before it grew to 17 hosts and a MGMT zone on 2026-11-16 (`lab_env/README.md`). The numbers below are unchanged; rerun the generating command to update them.
+
 Generated 2026-11-15 by `python -m eval_kg score-ablation`. Protocol: `docs/evaluation.md`. β = 0.5, γ = 0.5. EPSS v2026.06.15. Ties are broken by item id.
 
 Ladder: L0 CVSS base · L1 + CR/IR/AR · L2 + MAV (Internet reachability) · L3 + E (alert/KEV/SSVC) · L4 + P(u) = EVS. Baselines (not our score): EPSS percentile, KEV, CISA SSVC, Wazuh rule.level.

@@ -51,9 +51,10 @@ def test_platform_link_reaches_attack_techniques(session):
 
 
 def test_internet_reaches_only_the_dmz(session):
-    assert reachable(session, "Internet") == {"Nginx:80/tcp", "Nginx:443/tcp", "Web:80/tcp"}
+    assert reachable(session, "Internet") == {"Nginx:80/tcp", "Nginx:443/tcp", "Web:80/tcp", "DNS:53/udp", "DNS:53/tcp",
+                                              "Mail:25/tcp", "Mail:143/tcp"}
     exposed = {r["h"] for r in session.run("MATCH (a:Asset {internet_exposed: true}) RETURN a.hostname AS h")}
-    assert exposed == {"Nginx", "Web"}
+    assert exposed == {"Nginx", "Web", "DNS", "Mail"}
 
 
 def test_firewall_rules_are_reflected(session):
@@ -62,6 +63,15 @@ def test_firewall_rules_are_reflected(session):
     assert "Jenkins:8080/tcp" not in dep          # Office -> APP blocked
     assert "API:3000/tcp" in reachable(session, "Web")             # DMZ -> APP allowed
     assert "Admin-PC:22/tcp" not in reachable(session, "Files-SMB")   # DATA -> Office blocked
+
+
+def test_mgmt_zone_rules_are_reflected(session):
+    assert "Jump:22/tcp" in reachable(session, "Dev-PC")             # Office -> MGMT allowed
+    jump = reachable(session, "Jump")
+    assert {"HR-DB:3306/tcp", "Jenkins:8080/tcp", "Nginx:443/tcp"} <= jump   # MGMT -> DATA, APP, DMZ allowed
+    assert "Admin-PC:22/tcp" not in jump                              # MGMT -> Office blocked
+    assert not {"Jump:22/tcp", "Monitoring:3000/tcp"} & reachable(session, "Internet")
+    assert "Jump:22/tcp" not in reachable(session, "Jenkins")         # APP -> MGMT blocked
 
 
 def test_same_zone_hosts_reach_each_other(session):

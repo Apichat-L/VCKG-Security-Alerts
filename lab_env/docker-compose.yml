@@ -1,9 +1,10 @@
 # VCKG lab environment (topology of lab_network.pdf). Run from lab_env/, see README.md.
 #
-#   Attacker (Kali) -> Firewall (+ Suricata IDS) -> DMZ : Nginx, Web
-#                               -> APP    : API, Jenkins
-#                               -> DATA   : PostgreSQL, Files-SMB
-#                               -> Office : Admin-PC, Dep-PC
+#   Attacker (Kali) -> Firewall (+ Suricata IDS) -> DMZ : Nginx, Web, DNS, Mail
+#                               -> APP    : API, Jenkins, HR-App, Gitea
+#                               -> DATA   : PostgreSQL, Files-SMB, HR-DB, Redis
+#                               -> Office : Admin-PC, Dep-PC, Dev-PC
+#                               -> MGMT   : Jump, Monitoring
 #                     Wazuh (manager, indexer, dashboard) in its own "sec" network.
 #
 # Every host routes other zones through the firewall (entrypoint.sh sets the default route), so
@@ -28,6 +29,7 @@ networks:
   app:      { ipam: { config: [{ subnet: 10.10.20.0/24 }] } }
   data:     { ipam: { config: [{ subnet: 10.10.30.0/24 }] } }
   office:   { ipam: { config: [{ subnet: 10.10.40.0/24 }] } }
+  mgmt:     { ipam: { config: [{ subnet: 10.10.50.0/24 }] } }
   sec:      { ipam: { config: [{ subnet: 10.10.90.0/24 }] } }
 
 services:
@@ -48,6 +50,7 @@ services:
       app:      { ipv4_address: 10.10.20.254 }
       data:     { ipv4_address: 10.10.30.254 }
       office:   { ipv4_address: 10.10.40.254 }
+      mgmt:     { ipv4_address: 10.10.50.254 }
       sec:      { ipv4_address: 10.10.90.254 }
 
   ids:
@@ -95,6 +98,28 @@ services:
     networks:
       dmz: { ipv4_address: 10.10.10.12 }
 
+  dns:
+    <<: *host
+    build: { context: ., dockerfile: hosts/dns/Dockerfile, args: *build-args }
+    hostname: dns
+    environment: { <<: *host-env, LAB_GATEWAY: 10.10.10.254 }     # named logs to syslog (queries included)
+    networks:
+      dmz: { ipv4_address: 10.10.10.13 }
+
+  mail:
+    <<: *host
+    build: { context: ., dockerfile: hosts/mail/Dockerfile, args: *build-args }
+    hostname: mail
+    depends_on: [firewall, dns]
+    environment:                         # Postfix and Dovecot log to syslog
+      <<: *host-env
+      LAB_GATEWAY: 10.10.10.254
+      LAB_DNS: 10.10.10.13               # Mail -> DNS: the resolver of this host
+      MAIL_USER: ${MAIL_USER:-dave}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-Passw0rd!}
+    networks:
+      dmz: { ipv4_address: 10.10.10.14 }
+
   # ---------------------------------------------------------------- APP
   api:
     <<: *host
@@ -122,6 +147,34 @@ services:
     networks:
       app: { ipv4_address: 10.10.20.22 }
 
+  hr-app:
+    <<: *host
+    build: { context: ., dockerfile: hosts/hr-app/Dockerfile, args: *build-args }
+    hostname: hr-app
+    depends_on: [firewall, hr-db]
+    environment:
+      <<: *host-env
+      LAB_GATEWAY: 10.10.20.254
+      LAB_LOGFILES: apache:/usr/local/tomcat/logs/access_log
+    networks:
+      app: { ipv4_address: 10.10.20.23 }
+
+  gitea:
+    <<: *host
+    build: { context: ., dockerfile: hosts/gitea/Dockerfile, args: *build-args }
+    hostname: gitea
+    depends_on: [firewall, redis]
+    restart: on-failure                  # Gitea exits at start if its Redis cache is not reachable yet
+    environment:
+      <<: *host-env
+      LAB_GATEWAY: 10.10.20.254
+      LAB_LOGFILES: syslog:/var/log/gitea/gitea.log
+      GITEA_ADMIN_USER: ${GITEA_ADMIN_USER:-gitadmin}
+      GITEA_ADMIN_PASSWORD: ${GITEA_ADMIN_PASSWORD:-Passw0rd!}
+    volumes: [gitea_data:/var/lib/gitea]
+    networks:
+      app: { ipv4_address: 10.10.20.24 }
+
   # ---------------------------------------------------------------- DATA
   postgresql:
     <<: *host
@@ -142,6 +195,33 @@ services:
     environment: { <<: *host-env, LAB_GATEWAY: 10.10.30.254 }
     networks:
       data: { ipv4_address: 10.10.30.32 }
+
+  hr-db:
+    <<: *host
+    build: { context: ., dockerfile: hosts/hr-db/Dockerfile, args: *build-args }
+    hostname: hr-db
+    environment:
+      <<: *host-env
+      LAB_GATEWAY: 10.10.30.254
+      LAB_LOGFILES: mysql_log:/var/log/mysql/error.log
+      MARIADB_ROOT_PASSWORD: ${HR_DB_ROOT_PASSWORD:-Passw0rd!}
+      MARIADB_DATABASE: hr
+      MARIADB_USER: hr_app
+      MARIADB_PASSWORD: ${HR_DB_PASSWORD:-Passw0rd!}   # must match hosts/hr-app/webapp/hr/META-INF/context.xml
+    volumes: [hr_data:/var/lib/mysql]
+    networks:
+      data: { ipv4_address: 10.10.30.33 }
+
+  redis:
+    <<: *host
+    build: { context: ., dockerfile: hosts/redis/Dockerfile, args: *build-args }
+    hostname: redis
+    environment:
+      <<: *host-env
+      LAB_GATEWAY: 10.10.30.254
+      LAB_LOGFILES: syslog:/var/log/redis/redis.log
+    networks:
+      data: { ipv4_address: 10.10.30.34 }
 
   # ---------------------------------------------------------------- Office
   admin-pc:
@@ -171,6 +251,59 @@ services:
       PC_PASSWORD: ${DEP_PC_PASSWORD:-Passw0rd!}
     networks:
       office: { ipv4_address: 10.10.40.42 }
+
+  dev-pc:
+    <<: *host
+    image: vckg-lab-workstation          # same image as admin-pc (built once)
+    depends_on: [firewall, admin-pc]
+    hostname: dev-pc
+    environment:
+      <<: *host-env
+      LAB_GATEWAY: 10.10.40.254
+      PC_USER: ${DEV_PC_USER:-carol}
+      PC_PASSWORD: ${DEV_PC_PASSWORD:-Passw0rd!}
+    networks:
+      office: { ipv4_address: 10.10.40.43 }
+
+  # ---------------------------------------------------------------- MGMT (reached from Office only, never from the internet)
+  jump:
+    <<: *host
+    build: { context: ., dockerfile: hosts/jump/Dockerfile, args: *build-args }
+    hostname: jump
+    environment:
+      <<: *host-env
+      LAB_GATEWAY: 10.10.50.254
+      PC_USER: ${JUMP_USER:-ops}
+      PC_PASSWORD: ${JUMP_PASSWORD:-Passw0rd!}
+      PC_ADMIN: "1"
+      # Jump -> Jenkins, Jump -> HR-App: the admin consoles saved on the bastion (check: /lab/check-urls.sh)
+      LAB_URLS: http://10.10.20.22:8080/login http://10.10.20.23:8080/hr/
+    networks:
+      mgmt: { ipv4_address: 10.10.50.51 }
+
+  monitoring:
+    <<: *host
+    build: { context: ., dockerfile: hosts/monitoring/Dockerfile, args: *build-args }
+    hostname: monitoring
+    environment:
+      <<: *host-env
+      LAB_GATEWAY: 10.10.50.254
+      LAB_LOGFILES: syslog:/var/log/grafana/grafana.log
+      GF_LOG_MODE: console file
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-Passw0rd!}
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      # Monitoring -> PostgreSQL: password of the provisioned datasource, and psql's libpq environment
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Passw0rd!}
+      PGHOST: 10.10.30.31
+      PGUSER: postgres
+      PGDATABASE: postgres
+      PGPASSWORD: ${POSTGRES_PASSWORD:-Passw0rd!}
+      PGCONNECT_TIMEOUT: "3"
+    volumes: [grafana_data:/var/lib/grafana]
+    networks:
+      mgmt: { ipv4_address: 10.10.50.52 }
 
   # ---------------------------------------------------------------- Wazuh (official single-node, v4.9.2)
   wazuh.manager:
@@ -262,6 +395,9 @@ services:
 volumes:
   jenkins_home:
   pg_data:
+  hr_data:
+  gitea_data:
+  grafana_data:
   wazuh_api_configuration:
   wazuh_etc:
   wazuh_logs:

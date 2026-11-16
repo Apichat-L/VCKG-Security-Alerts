@@ -1,0 +1,17 @@
+// Lab DNS: answers lab.local for everyone (the Internet included) and recurses for the lab subnets only.
+// There is no upstream resolver (the lab has no internet), so recursion only serves cached / local data.
+options {
+    directory "/var/cache/bind";
+    listen-on { any; };
+    listen-on-v6 { none; };
+    allow-query { any; };
+    recursion yes;
+    allow-recursion { 10.10.0.0/16; 127.0.0.1; };
+    allow-transfer { any; };          // misconfiguration on purpose: zone transfer (AXFR) open to anyone
+    dnssec-validation no;
+    querylog yes;
+};
+logging {
+    category queries { default_syslog; };
+    category default { default_syslog; };
+};

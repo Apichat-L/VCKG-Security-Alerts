@@ -1,3 +1,5 @@
+> **8-host lab.** Generated on the original 8-host lab, before it grew to 17 hosts and a MGMT zone on 2026-11-16 (`lab_env/README.md`). The numbers below are unchanged; rerun the generating command to update them.
+
 ## Summary
 
 The whole system was rebuilt from scratch on 2026-11-15: Neo4j wiped to 0 nodes / 0 relationships, the CTI graph reloaded

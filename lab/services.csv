@@ -10,7 +10,9 @@
 # Those rows take their CVEs from the distribution's security data (OSV, see asset_kg/osv.py) instead of
 # NVD's upstream ranges, because distributions backport fixes without changing the upstream version.
 # Leave both empty for upstream builds: nginx (nginx.org repo), PostgreSQL (apt.postgresql.org),
-# Apache httpd (compiled), Node.js (tarball), Jenkins (WAR).
+# Apache httpd (compiled), Node.js (tarball), Jenkins (WAR), Tomcat (tarball), Gitea (binary),
+# MariaDB (mariadb.org repo), Redis (compiled), Grafana (grafana.com build).
+# Debian 12 packages of DNS, Mail and Jump are pinned to the 2024-03-11 snapshot (lab_env/common/debian-snapshot.sh).
 asset,service,port,protocol,software,version,cpe_vendor,cpe_product,distro_package,package_version
 Nginx,http,80,tcp,nginx,1.25.3,f5,nginx_open_source,,
 Nginx,https,443,tcp,nginx,1.25.3,f5,nginx_open_source,,
@@ -21,3 +23,14 @@ PostgreSQL,postgresql,5432,tcp,postgresql,15.5,postgresql,postgresql,,
 Files-SMB,smb,445,tcp,samba,4.17.12,samba,samba,samba,2:4.17.12+dfsg-0+deb12u4
 Admin-PC,ssh,22,tcp,openssh,8.9p1,openbsd,openssh,openssh,1:8.9p1-3
 Dep-PC,ssh,22,tcp,openssh,8.9p1,openbsd,openssh,openssh,1:8.9p1-3
+DNS,dns,53,udp,bind,9.18.19,isc,bind,bind9,1:9.18.19-1~deb12u1
+DNS,dns,53,tcp,bind,9.18.19,isc,bind,bind9,1:9.18.19-1~deb12u1
+Mail,smtp,25,tcp,postfix,3.7.10,postfix,postfix,postfix,3.7.10-0+deb12u1
+Mail,imap,143,tcp,dovecot,2.3.19.1,dovecot,dovecot,dovecot,1:2.3.19.1+dfsg1-2.1
+HR-App,http,8080,tcp,apache tomcat,9.0.85,apache,tomcat,,
+Gitea,http,3000,tcp,gitea,1.21.7,gitea,gitea,,
+HR-DB,mysql,3306,tcp,mariadb,10.11.6,mariadb,mariadb,,
+Redis,redis,6379,tcp,redis,7.2.4,redis,redis,,
+Dev-PC,ssh,22,tcp,openssh,8.9p1,openbsd,openssh,openssh,1:8.9p1-3
+Jump,ssh,22,tcp,openssh,9.2p1,openbsd,openssh,openssh,1:9.2p1-2+deb12u2
+Monitoring,http,3000,tcp,grafana,10.2.3,grafana,grafana,,

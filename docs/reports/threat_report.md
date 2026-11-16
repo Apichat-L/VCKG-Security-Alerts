@@ -1,5 +1,7 @@
 # Threat report: Environmental Vulnerability Score (EVS)
 
+> **8-host lab.** Generated on the original 8-host lab, before it grew to 17 hosts and a MGMT zone on 2026-11-16 (`lab_env/README.md`). The numbers below are unchanged; rerun the generating command to update them.
+
 Generated 2026-11-15 by `python -m score_kg report`. Method: `docs/scoring.md` (paper §III.A.2–3).
 
 | Parameter / input | Value |

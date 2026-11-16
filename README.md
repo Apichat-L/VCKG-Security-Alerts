@@ -15,7 +15,7 @@ into a new score and compare it with CVSS. Background: [outline_n_ideas.md](docs
 
 | Stage | Package | Status |
 |---|---|---|
-| 1. Lab test network (Docker) | `lab_env/` | done: 8 hosts, firewall with Suricata IDS, Kali, Wazuh 4.9.2, service logs collected |
+| 1. Lab test network (Docker) | `lab_env/` | done: 17 hosts in 5 zones (DMZ, APP, DATA, Office, MGMT), firewall with Suricata IDS, Kali, Wazuh 4.9.2, service logs collected |
 | 2.1 CTI knowledge graph | `cti_kg/` | done for CVEs published 2024 and later |
 | 2.2 Asset knowledge graph | `asset_kg/`, `lab/*.csv` | done |
 | 2.3 Bridges (CVE, platform, reachability) | `asset_kg/link.py` | done |
@@ -41,7 +41,7 @@ There are two separate Docker Compose setups. They are started and stopped separ
 | Setup | Compose file | Containers | Ports on localhost |
 |---|---|---|---|
 | Knowledge graph | `docker-compose.yml` (root) | `cti-neo4j` | 7474 (browser), 7687 (bolt) |
-| Lab | `lab_env/docker-compose.yml` (project `vckg-lab`) | 13: firewall, kali, 8 hosts, 3 Wazuh | 8443 (dashboard), 9200 (indexer), 55500 (Wazuh API) |
+| Lab | `lab_env/docker-compose.yml` (project `vckg-lab`) | 23: firewall, IDS, kali, 17 hosts, 3 Wazuh | 8443 (dashboard), 9200 (indexer), 55500 (Wazuh API) |
 
 The Python packages run on the host, from the repository's `.venv`, and talk to both setups through these ports.
 

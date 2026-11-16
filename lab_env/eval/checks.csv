@@ -11,3 +11,12 @@ PostgreSQL,postgresql,pg_isready -q -h localhost
 Files-SMB,files-smb,pgrep -x smbd
 Admin-PC,admin-pc,/lab/check-share.sh
 Dep-PC,dep-pc,pgrep -x sshd
+DNS,dns,dig +short +time=3 @127.0.0.1 shop.lab.local | grep -qx 10.10.10.11
+Mail,mail,/lab/check.sh
+HR-App,hr-app,curl -fsS -m 8 -o /dev/null http://localhost:8080/hr/health.jsp
+Gitea,gitea,curl -fsS -m 8 -o /dev/null http://localhost:3000/api/healthz
+HR-DB,hr-db,mariadb-admin ping -h 127.0.0.1 --connect-timeout=5 --silent
+Redis,redis,redis-cli -h 127.0.0.1 ping | grep -qx PONG
+Dev-PC,dev-pc,pgrep -x sshd
+Jump,jump,/lab/check-urls.sh
+Monitoring,monitoring,curl -fsS -m 10 -o /dev/null -u "$GF_SECURITY_ADMIN_USER:$GF_SECURITY_ADMIN_PASSWORD" http://localhost:3000/api/datasources/uid/shopdb/health

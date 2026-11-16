@@ -40,7 +40,11 @@ def test_internal_alert_source_target_and_path(session):
     assert ctx["source"] == {"kind": "asset", "name": "Dep-PC", "ip": "10.10.40.42"}
     assert ctx["attack_paths"][0] and path_text(ctx["attack_paths"][0]) == "Dep-PC > Admin-PC:22/tcp > Admin-PC"
     assert all(t["applies_to_target"] for t in ctx["techniques"])
-    assert {b["asset"] for b in ctx["blast_radius"]} == {"Dep-PC", "Files-SMB", "PostgreSQL"}
+    blast = {b["asset"]: b["hops"] for b in ctx["blast_radius"]}
+    # Office reaches Office, DATA and MGMT directly; through the MGMT bastion it reaches DMZ and APP in a second hop
+    assert {h for h, n in blast.items() if n == 1} == {"Dep-PC", "Dev-PC", "Files-SMB", "PostgreSQL", "HR-DB", "Redis",
+                                                       "Jump", "Monitoring"}
+    assert {h for h, n in blast.items() if n == 2} == {"Nginx", "Web", "DNS", "Mail", "API", "Jenkins", "HR-App", "Gitea"}
 
 
 def test_external_alert_paths_start_at_the_internet(session):

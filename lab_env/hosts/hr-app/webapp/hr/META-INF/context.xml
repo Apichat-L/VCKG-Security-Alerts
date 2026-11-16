@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- HR-App -> HR-DB: the portal's database connection (credentials stored in clear, as is common). -->
+<Context>
+  <Resource name="jdbc/hr" auth="Container" type="javax.sql.DataSource"
+            driverClassName="org.mariadb.jdbc.Driver"
+            url="jdbc:mariadb://10.10.30.33:3306/hr?connectTimeout=3000&amp;socketTimeout=5000"
+            username="hr_app" password="Passw0rd!"
+            maxTotal="5" maxIdle="2" maxWaitMillis="3000"
+            testOnBorrow="true" validationQuery="SELECT 1" validationQueryTimeout="3"/>
+</Context>

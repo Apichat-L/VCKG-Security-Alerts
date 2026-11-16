@@ -1,0 +1,16 @@
+# Monitoring -> PostgreSQL (lab/asset_edges.csv): Grafana reads the shop database for its dashboards.
+# The password comes from the container environment (POSTGRES_PASSWORD in docker-compose.yml).
+apiVersion: 1
+datasources:
+  - name: Shop DB
+    uid: shopdb
+    type: postgres
+    access: proxy
+    url: 10.10.30.31:5432
+    user: postgres
+    jsonData:
+      database: postgres
+      sslmode: disable
+      postgresVersion: 1500
+    secureJsonData:
+      password: ${POSTGRES_PASSWORD}

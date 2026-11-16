@@ -1,5 +1,7 @@
 # Evaluation, Part A (sensitivity): how the EVS reprioritises CVSS
 
+> **8-host lab.** Generated on the original 8-host lab, before it grew to 17 hosts and a MGMT zone on 2026-11-16 (`lab_env/README.md`). The numbers below are unchanged; rerun the generating command to update them.
+
 Generated 2026-11-15 by `python -m eval_kg sensitivity`. β = 0.5, γ = 0.5.
 
 > **This is a sensitivity analysis of the scoring mechanism, not a ground-truth validation.** It measures how far the EVS (L4) reorders a pure CVSS-base (L0) ranking across the whole asset × CVE inventory, with no alert and no exploit outcome, and checks the reordering follows asset value and reachability — i.e. the context terms do what the design claims. It does **not** show the reordering is *correct*: there is no outcome label here. The validated contextual claim is Part B (blast radius vs lab-measured impact); the ground-truth ranking tests are Parts A1/A2. Reason this matters: the lab's only alertable CVEs and its only repeatable exploit are all CVSS 9.8 (ceiling), so an A2 EVS-beats-CVSS result is not reachable here.

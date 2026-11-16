@@ -1,7 +1,9 @@
 # Network zones. "Internet" is the outside world (Table I in the paper uses it to decide MAV).
+# MGMT (bastion, monitoring) is reached from Office only, so it is not internet-reachable.
 name
 Internet
 DMZ
 APP
 DATA
 Office
+MGMT

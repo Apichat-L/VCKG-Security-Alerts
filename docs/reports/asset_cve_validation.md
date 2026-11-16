@@ -1,5 +1,7 @@
 # Asset → CVE links vs Wazuh vulnerability detection
 
+> **8-host lab.** Generated on the original 8-host lab, before it grew to 17 hosts and a MGMT zone on 2026-11-16 (`lab_env/README.md`). The numbers below are unchanged; rerun the generating command to update them.
+
 Generated 2026-11-14 by `python -m asset_kg wazuh-check`. Method: `asset_kg/wazuh_check.py`.
 
 Wazuh is a second opinion, not ground truth (PLAN.md §3), so the numbers below are **agreement**. Only software that Wazuh inventories as a package on the same host is scored. Wazuh CVEs that are not in the CTI graph (CVE years not loaded) are counted separately, not as misses.

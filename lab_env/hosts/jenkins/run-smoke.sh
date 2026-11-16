@@ -1,6 +1,6 @@
 #!/bin/sh
 # Run the Jenkins job `api-smoke` through Jenkins' own REST API and wait for its result.
-# Exit 0 if the build succeeds (Jenkins can reach the API), 1 otherwise. Used by lab_env/eval/checks.csv.
+# Exit 0 if the build succeeds (Jenkins can reach the API and Gitea), 1 otherwise. Used by lab_env/eval/checks.csv.
 set -u
 J=http://localhost:8080
 JOB=$J/job/api-smoke

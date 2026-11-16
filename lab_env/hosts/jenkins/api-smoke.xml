@@ -1,6 +1,6 @@
 <?xml version='1.1' encoding='UTF-8'?>
 <project>
-  <description>Lab dependency Jenkins -> API: checks the API this CI server deploys to (lab_env/eval).</description>
+  <description>Lab dependencies Jenkins -> API and Jenkins -> Gitea: checks the API this CI server deploys to and the Git server it builds from (lab_env/eval).</description>
   <keepDependencies>false</keepDependencies>
   <properties/>
   <scm class="hudson.scm.NullSCM"/>
@@ -12,7 +12,8 @@
   <concurrentBuild>false</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>curl -fsS --max-time 5 http://10.10.20.21:3000/health</command>
+      <command>curl -fsS --max-time 5 http://10.10.20.21:3000/health
+curl -fsS --max-time 5 http://10.10.20.24:3000/api/v1/version</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers/>
