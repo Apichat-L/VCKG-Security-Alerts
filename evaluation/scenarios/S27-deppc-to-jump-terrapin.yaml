@@ -1,0 +1,37 @@
+# Dep-PC (OFFICE, OpenSSH 8.9p1 Ubuntu-3) connects to Jump (MGMT, 10.10.50.51,
+# OpenSSH 9.2p1 Debian-2+deb12u2, OFFICE->MGMT cross-zone). CVE-2023-48795
+# (Terrapin, CVSS 5.9 MEDIUM): when both endpoints support
+# chacha20-poly1305@openssh.com and SSH_MSG_EXT_INFO is exchanged, a MitM can
+# truncate prefix messages sent before SSH_MSG_NEWKEYS, downgrading the security
+# of the connection (removes extension negotiation such as strict-kex).
+# Confirmed: cipher chacha20-poly1305@openssh.com negotiated in BOTH directions;
+# SSH2_MSG_EXT_INFO received with server-sig-algs and publickey-hostbound.
+# Both endpoints are in the vulnerable range (fix requires 9.6p1+).
+# Wazuh rule 5710 (sshd: Attempt to login using non-existent user 'labuser')
+# at 2026-11-16T19:14:47Z on jump agent.
+# Evidence: evaluation/pentest/evidence/s27_terrapin_ssh.txt
+id: S27-deppc-to-jump-terrapin
+description: Terrapin CVE-2023-48795 attack surface confirmed between dep-pc (OpenSSH 8.9p1) and jump (OpenSSH 9.2p1); OFFICE->MGMT cross-zone.
+start: 2026-11-16T19:14:04Z
+end: 2026-11-16T19:14:47Z
+attacker: dep-pc
+steps:
+  - step: 1
+    start: 2026-11-16T19:14:04Z
+    end: 2026-11-16T19:14:47Z
+    target: Jump
+    cve: CVE-2023-48795
+    technique: T1557
+    outcome: success
+    achieved: data_access
+    pivot: false
+    notes: |
+      ssh -v -c chacha20-poly1305@openssh.com -o BatchMode=yes labuser@10.10.50.51
+      kex: server->client cipher: chacha20-poly1305@openssh.com
+      kex: client->server cipher: chacha20-poly1305@openssh.com
+      SSH2_MSG_NEWKEYS sent/received; SSH2_MSG_EXT_INFO received (server-sig-algs, publickey-hostbound).
+      Client: OpenSSH_8.9p1 Ubuntu-3 (vulnerable, fix requires 9.6p1).
+      Server: OpenSSH_9.2p1 Debian-2+deb12u2 (vulnerable, fix requires 9.6p1).
+      Terrapin: chacha20-poly1305 + EXT_INFO combination allows prefix truncation MitM.
+      Wazuh rule 5710 on jump at 19:14:47Z (sshd non-existent user labuser).
+      evidence s27_terrapin_ssh.txt

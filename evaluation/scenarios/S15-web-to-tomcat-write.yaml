@@ -1,0 +1,40 @@
+# DMZ web foothold pivots across the firewall (DMZ->APP, allowed) to HR-App's Tomcat 9.0.85, whose
+# DefaultServlet is deliberately deployed with readonly=false -- the precondition of CVE-2025-24813
+# (CISA KEV) / CVE-2024-50379. A direct PUT of a .jsp is rejected by Tomcat's own *.jsp servlet mapping
+# (404), and a trailing-slash bypass attempt returns 409 -- so full RCE via a JSP webshell was NOT
+# achieved. What IS confirmed, for real: the DefaultServlet accepts an unauthenticated HTTP PUT and
+# persists arbitrary content (a 201, read back verbatim, then removed with DELETE) -- the vulnerable
+# feature's actual effect, arbitrary file write / integrity compromise, graded success but without
+# code execution. The failed JSP-upload attempt (trailing-slash bypass) matched Suricata's
+# "CVE-2017-12617 JSP Upload Bypass" signature -- that CVE is the IDS's own attribution for this
+# specific bypass technique, distinct from CVE-2025-24813 below (same root cause -- writable
+# DefaultServlet -- different disclosed vulnerability). The successful file-write step crossed the
+# firewall too, but only raised the generic rule 31101 (the 404s around it); no CVE-2025-24813-tagged
+# signature exists in this ruleset for that step, a known limitation, not assumed away.
+# Evidence: evaluation/pentest/evidence/s15_tomcat_rce.txt, s15_tomcat_write.txt.
+id: S15-web-to-tomcat-write
+description: DMZ web foothold probes HR-App's Tomcat writable DefaultServlet (CVE-2025-24813 precondition); JSP upload bypass fails and alerts as CVE-2017-12617, then a direct PUT confirms arbitrary file write.
+start: 2026-11-16T16:34:38Z
+end: 2026-11-16T16:35:18Z
+attacker: web
+steps:
+  - step: 1
+    start: 2026-11-16T16:34:38Z
+    end: 2026-11-16T16:35:12Z
+    target: HR-App
+    cve: CVE-2017-12617
+    technique: T1190
+    outcome: failed
+    achieved: none
+    pivot: false
+    notes: Attempted JSP webshell upload via PUT /hr/s15.jsp (direct, then the classic CVE-2017-12617 trailing-slash bypass /hr/s15.jsp/). Tomcat's JspServlet mapping rejected both (404, then 409) -- RCE not achieved. The trailing-slash attempt fired ET WEB_SPECIFIC_APPS "Apache Tomcat Possible CVE-2017-12617 JSP Upload Bypass Attempt" at 16:35:12 (rule 86601) -- the IDS's own CVE attribution for this technique, distinct from CVE-2025-24813 below. evidence s15_tomcat_rce.txt
+  - step: 2
+    start: 2026-11-16T16:35:14Z
+    end: 2026-11-16T16:35:18Z
+    target: HR-App
+    cve: CVE-2025-24813
+    technique: T1190
+    outcome: success
+    achieved: data_access
+    pivot: false
+    notes: Unauthenticated PUT to the writable DefaultServlet (readonly=false, the CVE's precondition) persisted an arbitrary file (/hr/pwned_s15.html, 201, content read back verbatim), then removed (DELETE 204). Confirms arbitrary file write / integrity compromise, not code execution. Web server logged the surrounding 404s as rule 31101 (generic); no CVE-tagged Tomcat signature fired for this run. evidence s15_tomcat_write.txt

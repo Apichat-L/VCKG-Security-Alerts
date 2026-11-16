@@ -1,0 +1,22 @@
+# DMZ web foothold re-runs the real CVE-2024-23897 CLI file-read against Jenkins over the firewall
+# (DMZ->APP, allowed), the same technique as S08/S10 but a fresh timestamped run as part of the
+# 2026-11-16 5-scenario batch (S14-S18). Suricata (firewall namespace) sees the cross-zone traffic and
+# raises both the lab test sid 9000001 and ET EXPLOIT sid 2050517, both carrying CVE-2024-23897.
+# Evidence: evaluation/pentest/evidence/s14_jenkins_passwd.txt. Confirmed in the Wazuh indexer
+# (wazuh-alerts-*, rule 86601) at the step window below.
+id: S14-web-to-jenkins-1116
+description: DMZ web foothold exploits Jenkins (CVE-2024-23897) over the firewall; unauthenticated CLI file read.
+start: 2026-11-16T16:33:35Z
+end: 2026-11-16T16:33:36Z
+attacker: web
+steps:
+  - step: 1
+    start: 2026-11-16T16:33:35Z
+    end: 2026-11-16T16:33:36Z
+    target: Jenkins
+    cve: CVE-2024-23897
+    technique: T1190
+    outcome: success
+    achieved: data_access
+    pivot: true
+    notes: Unauthenticated Jenkins CLI @-file read (args4j) web->jenkins (DMZ->APP); leaked /etc/passwd incl. root over the network. Detected by Suricata ET EXPLOIT sid 2050517 and lab sid 9000001 (CVE-2024-23897), rule 86601 in Wazuh. evidence s14_jenkins_passwd.txt

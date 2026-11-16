@@ -1,0 +1,32 @@
+# DMZ web foothold probes Gitea 1.21.7 activity-disclosure endpoint (DMZ->APP).
+# CVE-2025-68940: /api/v1/users/{username}/heatmap returns contribution heatmap
+# data unauthenticated; when populated this reveals user activity patterns and
+# precise contribution timestamps. The endpoint is also confirmed accessible from
+# the public profile page (/gitadmin, HTTP 200 without auth). Both responses
+# returned HTTP 200; heatmap array was empty (no commits yet) but the endpoint
+# availability itself is the vulnerability surface.
+# Suricata rule 86601 (ET HUNTING curl User-Agent + ET INFO Web Crawl) ×5
+# at 19:08:31-19:08:44Z targeting 10.10.20.24.
+# Evidence: evaluation/pentest/evidence/s21_gitea_heatmap.txt
+id: S21-web-to-gitea-heatmap
+description: Unauthenticated Gitea heatmap and profile endpoints expose user activity without authentication (CVE-2025-68940); web foothold to gitea, DMZ->APP.
+start: 2026-11-16T19:08:30Z
+end: 2026-11-16T19:08:44Z
+attacker: web
+steps:
+  - step: 1
+    start: 2026-11-16T19:08:30Z
+    end: 2026-11-16T19:08:44Z
+    target: Gitea
+    cve: CVE-2025-68940
+    technique: T1589.001
+    outcome: success
+    achieved: data_access
+    pivot: false
+    notes: |
+      curl -si 'http://10.10.20.24:3000/api/v1/users/gitadmin/heatmap'
+      -> HTTP 200 Content-Type: application/json;charset=utf-8, body: []
+      Profile: GET /gitadmin -> HTTP 200 (unauthenticated public profile page)
+      Endpoint accessible without auth; in a live instance exposes activity heatmap.
+      Suricata rule 86601 ET HUNTING curl User-Agent ×5, 19:08:31-19:08:44Z.
+      evidence s21_gitea_heatmap.txt

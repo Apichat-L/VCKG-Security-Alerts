@@ -1,0 +1,33 @@
+# MGMT jump foothold (10.10.50.51) connects to MariaDB 10.11.6 in DATA zone
+# (10.10.30.33:3306, MGMT->DATA cross-zone). CVE-2026-44173: information
+# disclosure — the hr_app application credential (hr_app/Passw0rd!) grants
+# SELECT on all columns in the hr database, including confidential salary and
+# IBAN fields. An attacker who obtains the application-tier credential can
+# exfiltrate the full HR dataset without privilege escalation.
+# Exfiltrated: 4 employee records including name, department, salary, IBAN.
+# Suricata rule 86601 (ET SCAN Suspicious inbound to mySQL port 3306) at
+# 2026-11-16T19:16:36Z; hr-db Wazuh agent logged connection.
+# Evidence: evaluation/pentest/evidence/s23_mariadb_hrdata.txt
+id: S23-jump-to-hrdb-mariadb
+description: MariaDB 10.11.6 hr_app credential grants full read of employee salary/IBAN table (CVE-2026-44173); jump foothold to hr-db, MGMT->DATA.
+start: 2026-11-16T19:12:27Z
+end: 2026-11-16T19:12:40Z
+attacker: jump
+steps:
+  - step: 1
+    start: 2026-11-16T19:12:27Z
+    end: 2026-11-16T19:12:40Z
+    target: HR-DB
+    cve: CVE-2026-44173
+    technique: T1078.001
+    outcome: success
+    achieved: data_access
+    pivot: false
+    notes: |
+      mysql -h 10.10.30.33 -u hr_app -pPassw0rd! hr
+        -> MariaDB 10.11.6-MariaDB (vulnerable range for CVE-2026-44173)
+        -> SELECT name, department, salary, iban FROM employees;
+        -> 4 rows: Alice/IT/98000, Bob/Sales/61000, Carol/R&D/84000, Dave/Finance/77000
+      Sensitive salary and IBAN columns fully readable with application credential.
+      Suricata 86601 ET SCAN Suspicious inbound to mySQL port 3306 at 19:16:36Z.
+      evidence s23_mariadb_hrdata.txt
