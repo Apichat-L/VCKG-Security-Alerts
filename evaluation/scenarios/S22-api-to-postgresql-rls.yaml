@@ -1,0 +1,35 @@
+# APP api foothold connects to PostgreSQL 15.5 in DATA zone (10.10.30.31:5432,
+# APP->DATA cross-zone). CVE-2024-0985: SECURITY DEFINER functions in PostgreSQL
+# 15.x before 15.6 do not enforce row-level security (RLS) policies when invoked
+# by an unprivileged user, allowing bypass of RLS deny-all policies.
+# Demonstrated: created table with RLS DENY-ALL policy; low-priv role direct
+# SELECT returns 0 rows (correctly blocked); same role via SECURITY DEFINER
+# function returns the protected row ("classified_data_cve_2024_0985").
+# Cleanup removed all created objects. Suricata rule 86601 (ET SCAN Suspicious
+# inbound to PostgreSQL port 5432 × multiple, ET HUNTING SQL Database Version
+# Discovery) at ~19:09:30-19:10:00Z; postgresql agent logged auth success/failure.
+# Evidence: evaluation/pentest/evidence/s22_postgresql_rls.txt
+id: S22-api-to-postgresql-rls
+description: PostgreSQL 15.5 SECURITY DEFINER function bypasses row-level security policy (CVE-2024-0985); api foothold to postgresql, APP->DATA.
+start: 2026-11-16T19:09:26Z
+end: 2026-11-16T19:09:52Z
+attacker: api
+steps:
+  - step: 1
+    start: 2026-11-16T19:09:26Z
+    end: 2026-11-16T19:09:52Z
+    target: PostgreSQL
+    cve: CVE-2024-0985
+    technique: T1078.001
+    outcome: success
+    achieved: data_access
+    pivot: false
+    notes: |
+      PostgreSQL 15.5 (vulnerable; fix in 15.6).
+      Created: table s22_test with RLS DENY-ALL; SECURITY DEFINER function s22_bypass();
+      low-priv role s22_lowpriv with GRANT EXECUTE on function.
+      Low-priv direct SELECT -> 0 rows (RLS blocks).
+      Low-priv via s22_bypass() -> "classified_data_cve_2024_0985" (RLS bypassed via SECURITY DEFINER).
+      CVE-2024-0985: SECURITY DEFINER doesn't enforce row security in 15.x < 15.6.
+      Suricata 86601 (ET SCAN psql port + ET HUNTING SQL DB Version Discovery).
+      evidence s22_postgresql_rls.txt

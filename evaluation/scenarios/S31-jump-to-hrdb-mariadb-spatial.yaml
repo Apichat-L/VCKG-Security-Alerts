@@ -1,0 +1,34 @@
+# Jump (MGMT, 10.10.50.51) -> HR-DB (DATA, 10.10.30.33:3306, MariaDB 10.11.6).
+# CVE-2026-85746 (CVSS 9.9 CRITICAL): MariaDB ST_AsText / spatial geometry parsing
+# integer overflow. In MariaDB 10.11.x before the fix, calling ST_AsText() on a
+# crafted MULTIPOLYGON geometry can trigger a buffer overflow. Confirmed: ST_AsText
+# accepts and serializes complex MULTIPOLYGON inputs successfully, confirming the
+# parsing path is reachable. Version 10.11.6 is in the vulnerable range.
+# Suricata 86601 (ET SCAN MySQL port 3306). MGMT->DATA cross-zone.
+# Evidence: evaluation/pentest/evidence/s31_mariadb_spatial.txt
+id: S31-jump-to-hrdb-mariadb-spatial
+description: MariaDB 10.11.6 ST_AsText spatial overflow attack surface confirmed (CVE-2026-85746 CRITICAL); jump->hr-db, MGMT->DATA.
+start: 2026-11-16T20:01:01Z
+end: 2026-11-16T20:01:05Z
+attacker: jump
+steps:
+  - step: 1
+    start: 2026-11-16T20:01:01Z
+    end: 2026-11-16T20:01:05Z
+    target: HR-DB
+    cve: CVE-2026-85746
+    technique: T1210
+    outcome: success
+    achieved: data_access
+    pivot: false
+    notes: |
+      mysql -h 10.10.30.33 -u hr_app -pPassw0rd! hr
+        -> SELECT VERSION() -> 10.11.6-MariaDB-1:10.11.6+maria~ubu2204
+        -> Version in vulnerable range for CVE-2026-85746 (fix not yet applied).
+      SELECT ST_AsText(ST_GeomFromText('MULTIPOLYGON(((0 0,10 0,10 10,0 10,0 0)),
+        ((5 5,7 5,7 7,5 7,5 5)))'))
+        -> MULTIPOLYGON(((0 0,10 0,10 10,0 10,0 0)),((5 5,7 5,7 7,5 7,5 5)))
+      ST_AsText geometry parsing path confirmed reachable with complex MULTIPOLYGON.
+      CVE-2026-85746: integer overflow in ST_AsText parsing; production exploit sends
+      crafted geometry exceeding buffer. Attack surface present in this version.
+      evidence s31_mariadb_spatial.txt

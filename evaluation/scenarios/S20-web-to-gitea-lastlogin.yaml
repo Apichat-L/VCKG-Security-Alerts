@@ -1,0 +1,30 @@
+# DMZ web foothold makes unauthenticated HTTP GET requests to Gitea 1.21.7 running
+# in APP zone (10.10.20.24:3000, DMZ->APP cross-zone boundary). CVE-2025-68943:
+# the /api/v1/users/search endpoint returns last_login timestamp and email for
+# every user without authentication, exposing user activity timing to any network
+# observer. Result: gitadmin (uid 1) user record retrieved including last_login
+# and email. Suricata flagged the cross-zone curl traffic (rule 86601 ×4,
+# ET HUNTING curl User-Agent to Dotted Quad, dest 10.10.20.24, 19:08:09Z).
+# Evidence: evaluation/pentest/evidence/s20_gitea_lastlogin.txt
+id: S20-web-to-gitea-lastlogin
+description: Unauthenticated Gitea user search API exposes last_login and email without authentication (CVE-2025-68943); web foothold to gitea, DMZ->APP.
+start: 2026-11-16T19:08:08Z
+end: 2026-11-16T19:08:20Z
+attacker: web
+steps:
+  - step: 1
+    start: 2026-11-16T19:08:08Z
+    end: 2026-11-16T19:08:20Z
+    target: Gitea
+    cve: CVE-2025-68943
+    technique: T1589.001
+    outcome: success
+    achieved: data_access
+    pivot: false
+    notes: |
+      curl -s 'http://10.10.20.24:3000/api/v1/users/search?limit=10'
+      -> HTTP 200: {"data":[{"id":1,"login":"gitadmin","email":"gitadmin@noreply.git.lab.local",
+        "last_login":"0001-01-01T00:00:00Z","created":"2026-11-16T14:52:16Z",...}],"ok":true}
+      Unauthenticated endpoint returns user identity including last_login timestamp.
+      Suricata rule 86601 (ET HUNTING curl User-Agent to Dotted Quad) x4 at 19:08:09Z.
+      evidence s20_gitea_lastlogin.txt

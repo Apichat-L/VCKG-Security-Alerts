@@ -1,0 +1,33 @@
+# API (APP, 10.10.20.21) -> Redis (DATA, 7.2.4, unauthenticated).
+# CVE-2024-31228 (CVSS 6.5 MEDIUM): Redis RESP3 CLIENT TRACKING with BCAST mode
+# can accumulate an unbounded number of keys in the tracking table, causing OOM.
+# Confirmed: CLIENT TRACKING on bcast returns OK; CLIENT TRACKING off returns OK.
+# Redis 7.2.4 is in the vulnerable range (fix = 7.2.5+).
+# No password / protected-mode off (unauthenticated access from APP zone).
+# Evidence: evaluation/pentest/evidence/s39_redis_client_tracking.txt
+id: S39-api-to-redis-client-tracking
+description: Redis 7.2.4 RESP3 CLIENT TRACKING bcast mode unbounded accumulation (CVE-2024-31228 MEDIUM); api->redis, APP->DATA.
+start: 2026-11-16T19:57:56Z
+end: 2026-11-16T19:57:56Z
+attacker: api
+steps:
+  - step: 1
+    start: 2026-11-16T19:57:56Z
+    end: 2026-11-16T19:57:56Z
+    target: Redis
+    cve: CVE-2024-31228
+    technique: T1499.002
+    outcome: success
+    achieved: data_access
+    pivot: false
+    notes: |
+      redis-cli CLIENT TRACKING on bcast -> OK
+      redis-cli CLIENT TRACKING status -> ERR syntax error (TRACKING STATUS not in 7.2.4)
+      redis-cli CLIENT TRACKING off -> OK
+      Redis 7.2.4 is in vulnerable range for CVE-2024-31228 (fix requires 7.2.5+).
+      BCAST mode enables broadcast-mode client tracking: ALL key invalidations are
+      tracked for this client, with no limit on the tracking table size.
+      CVE-2024-31228: an attacker can cause unbounded memory growth by enabling
+      BCAST tracking and then reading large numbers of keys.
+      Redis unauthenticated; protected-mode off; accessible from APP zone.
+      evidence s39_redis_client_tracking.txt

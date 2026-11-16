@@ -1,0 +1,27 @@
+# APP foothold (api) reaches Redis on DATA (APP->DATA, allowed) and exploits the deliberately
+# unauthenticated config (no password, protected-mode off) to run CVE-2024-31449: unauthenticated
+# arbitrary Lua execution via EVAL, reachable through the Lua 'bit' library whose bit.tohex() has a
+# real stack-buffer-overflow in the actual CVE. The overflow needs a huge argument list and can crash
+# the server (DoS, excluded by this project's rule) -- so a safe EVAL calling bit.tohex() with normal
+# arguments was sent instead. It executes server-side Lua (confirmed: the script's own return value
+# came back over RESP) without the memory-corruption payload, and matches the IDS's own
+# CVE-2024-31449 signature exactly (the content match is on the EVAL/bit.tohex( call pattern, not the
+# overflow length). Verified non-destructive: redis-cli PING from inside the container returned PONG
+# afterward and the container's RestartCount stayed 0.
+# Evidence: evaluation/pentest/evidence/s16_redis_eval.txt.
+id: S16-api-to-redis
+description: APP foothold exploits Redis's unauthenticated EVAL (CVE-2024-31449, bit.tohex) for unauthenticated Lua code execution; crash-triggering overflow payload withheld (no-DoS rule).
+start: 2026-11-16T16:49:34Z
+end: 2026-11-16T16:49:37Z
+attacker: api
+steps:
+  - step: 1
+    start: 2026-11-16T16:49:34Z
+    end: 2026-11-16T16:49:37Z
+    target: Redis
+    cve: CVE-2024-31449
+    technique: T1190
+    outcome: success
+    achieved: code_exec
+    pivot: false
+    notes: Unauthenticated RESP EVAL "return bit.tohex(1,1)" 0 from api (APP) to Redis (DATA, no password/protected-mode off). Lua executed server-side (returned "1" over RESP). Detected by Suricata ET HUNTING sid 2057707 (CVE-2024-31449), rule 86601 in Wazuh, api->redis. Server confirmed healthy afterward (PING->PONG, RestartCount 0) -- no DoS. evidence s16_redis_eval.txt

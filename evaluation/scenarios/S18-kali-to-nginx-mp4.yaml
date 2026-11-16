@@ -1,0 +1,22 @@
+# External attacker (kali, held in the DMZ per S03's finding) probes nginx 1.25.3's mp4 module
+# surface for CVE-2024-7347 (an out-of-bounds read/crash in ngx_http_mp4_module). nginx is in the
+# vulnerable version range, but this lab's config reverse-proxies to Web and never enables the mp4
+# directive on a location serving an actual .mp4 file, so the vulnerable code path is never reached.
+# All probe requests returned 404; the service stayed live afterward. Contained, not exploited.
+# Evidence: evaluation/pentest/evidence/s18_nginx_mp4.txt.
+id: S18-kali-to-nginx-mp4
+description: External attacker probes nginx's mp4 module (CVE-2024-7347); module not configured, contained.
+start: 2026-11-16T16:51:24Z
+end: 2026-11-16T16:51:25Z
+attacker: kali
+steps:
+  - step: 1
+    start: 2026-11-16T16:51:24Z
+    end: 2026-11-16T16:51:25Z
+    target: Nginx
+    cve: CVE-2024-7347
+    technique: T1190
+    outcome: failed
+    achieved: none
+    pivot: false
+    notes: Confirmed nginx/1.25.3 (in the vulnerable range), then probed /video.mp4, /video.mp4?start=99999999999, /media/test.mp4?start=-1 from the external kali host. All 404 (mp4 directive not enabled on any served location); service stayed live afterward (200 on /). Wazuh rule 31101 x6 (web 400/404 errors). evidence s18_nginx_mp4.txt

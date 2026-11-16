@@ -1,0 +1,33 @@
+# Admin-PC (OFFICE, 10.10.40.41) connects to Files-SMB Samba 4.17.x (DATA,
+# 10.10.30.32:445, OFFICE->DATA cross-zone). CVE-2026-58222: the Samba share
+# [public] is configured with guest ok=yes and read only=no, combined with
+# "map to guest = Bad User" (any failed auth silently maps to guest).
+# Without any credentials, an attacker can list all shares, browse the public
+# share, and write arbitrary files — demonstrated by writing s24_guest_pwned.txt
+# and reading it back. Wazuh rule 100110 (Samba authentication failed for user
+# root, NT_STATUS_NO_SUCH_USER) on files-smb agent at 19:16:38Z — the null-auth
+# is logged at Samba's auth_audit level even though the guest fallback succeeds.
+# Evidence: evaluation/pentest/evidence/s24_samba_guest.txt
+id: S24-adminpc-to-samba-guest
+description: Samba 4.17.x guest-accessible share allows unauthenticated read/write (CVE-2026-58222); admin-pc foothold to files-smb, OFFICE->DATA.
+start: 2026-11-16T19:12:28Z
+end: 2026-11-16T19:12:40Z
+attacker: admin-pc
+steps:
+  - step: 1
+    start: 2026-11-16T19:12:28Z
+    end: 2026-11-16T19:12:40Z
+    target: Files-SMB
+    cve: CVE-2026-58222
+    technique: T1021.002
+    outcome: success
+    achieved: data_access
+    pivot: false
+    notes: |
+      smbclient -L 10.10.30.32 -N -> lists: public (Disk), finance (Disk), IPC$
+      smbclient //10.10.30.32/public -N -c 'ls' -> README.txt visible
+      smbclient //10.10.30.32/public -N -c 'put /tmp/s24_evidence.txt s24_guest_pwned.txt' -> write OK
+      smbclient //10.10.30.32/public -N -c 'get s24_guest_pwned.txt ...' -> "CVE-2026-58222 s24 guest write"
+      Samba config: map to guest = Bad User; [public] guest ok=yes; read only=no.
+      Wazuh rule 100110 (Samba auth_audit failed root) at 19:16:38Z; files-smb agent.
+      evidence s24_samba_guest.txt
