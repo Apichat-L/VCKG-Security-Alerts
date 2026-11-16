@@ -128,6 +128,71 @@ Proposed evaluation, to discuss with your professor:
 3. **Component checks:** asset-to-CVE link precision/recall (section 3), and alert-to-technique mapping accuracy.
 4. **Baselines:** CVSS base, CVSS + environmental, EPSS, and SSVC decision tree.
 
+## 7. Demo: `explain` (attack path, blast radius and EVS for one input) *(built 2026-11-16)*
+
+**Goal.** Show the blast-radius algorithm and the EVS calculation live in the Neo4j Browser, for any input you
+choose during the demo. Today they only run in bulk inside `score_kg alerts`.
+
+**Why the calculation runs in Python, not in the Browser.** The Browser cannot call a Python function, and
+custom APOC procedures are not installed (core APOC only). The EVS also needs the CVSS v3.1 Environmental
+equation, which `score_kg` computes with the `cvss` library. Copying that equation into Cypher would give two
+implementations that can disagree. So one command computes the result with the existing code and writes it
+to the graph as a small, separate result subgraph. The Browser then draws it.
+
+**Command** (new `explain` subcommand of `score_kg`):
+```
+python -m score_kg explain --cve CVE-2024-23897 [--asset Jenkins]
+python -m score_kg explain --technique T1574.010 [--asset PostgreSQL]
+python -m score_kg explain --tactic TA0006 [--asset Web]
+python -m score_kg explain --clear          # remove all results
+```
+`--asset` is optional. If it is left out, the targets are every asset where the input finds a CVE.
+
+**What it does**
+
+| Input | Steps |
+|---|---|
+| CVE | 1. Targets: `--asset`, or every asset whose software `HAS_VULNERABILITY` the CVE. 2. Attack paths from the Internet to each target over `CAN_REACH` (same query as `alert_kg/context.py` `Q_PATHS`, ≤ 4 hops, 3 shortest). 3. EVS of (target, CVE) with `model.score`. 4. Blast radius BR_k with `model.blast_radius` (k = 1, impact mode from the CVE). |
+| Technique | 1. Technique family: the technique, its parent and its sub-techniques (as in `alert_kg`). 2. CVEs: Technique ← CAPEC ← CWE (Base/Variant/Compound only, as in `alert_kg`) → CVE, limited to CVEs present on lab software. 3. Targets: only the hosts that have such a CVE (with `--asset`, only that host, if it has one). 4. Attack paths to each target. 5. EVS and blast radius of each linked CVE on its target. |
+| Tactic | Expands to every technique that `IMPLEMENTS` it (with sub-techniques), then the same as Technique. In the lab a tactic reaches 2–21 CVEs. |
+
+`E` follows the existing rule (`cvss31.exploit_maturity`). It is H when an Alert already `MENTIONS` that CVE and `TARGETS` that host. Otherwise it comes from KEV/SSVC.
+A CVE without a CVSS v3.1 vector is listed as "not scored".
+
+**Result subgraph** (new labels, used by nothing else; `--clear` and `cti_kg wipe` remove them):
+```
+(:Analysis {id, input, created})-[:INPUT]->(Vulnerability | Technique | Tactic)
+(:Analysis)-[:TARGET]->(Asset)
+(:Analysis)-[:HAS_SCORE]->(:Score {asset, cve, evs, level, cvss_base, env, env_vector, MAV, E, E_reason,
+                                     P, P_terms, impact_mode, internet_path, beta, gamma, k})
+(:Score)-[:FOR_ASSET]->(Asset)    (:Score)-[:FOR_CVE]->(Vulnerability)
+(:Score)-[:BLAST_RADIUS {hops}]->(Asset)
+```
+`P_terms` lists every term of Eq. 15, e.g. `"Web: crit 0.5 × γ^1 = 0.25"`. The Browser can then show how P(u) adds up.
+Each new run replaces the previous Analysis with the same input.
+
+**Terminal output.** The same steps as text: the input, how it expanded, the targets, the paths, and for each score the vector → Env → P(u) sum → EVS → level. Use it as a backup if the Browser misbehaves.
+
+**Browser queries** go into a new Step 5 of `docs/demo_queries.md`:
+- the analysis graph: input → targets → Score nodes → CVEs, plus blast-radius edges;
+- the attack paths to the targets (the `CAN_REACH` query, with the target as a parameter);
+- the calculation table: one row per Score with every intermediate value;
+- the P(u) breakdown (`UNWIND s.P_terms`).
+
+**Files**
+- new `score_kg/explain.py`: resolve the input, find the paths, score, print, and write the result subgraph. It reuses `graph.load`, `graph.cve_details`, `model.score`, `model.blast_radius` and `model.distances`, and the path query and `SPECIFIC_CWE` from `alert_kg/context.py`.
+- `score_kg/__main__.py`: the `explain` subcommand.
+- `tests/test_score_explain.py`: offline tests for the P(u) breakdown (the terms add up to `model.propagation`) and for building the result rows.
+- `docs/scoring.md` (short section) and `docs/demo_queries.md` (Step 5).
+
+**Check.** Run the command on CVE-2024-23897/Jenkins. Its EVS must equal the `alert_scores.csv` row (10.0) and its blast radius {Jenkins, API}. Then run T1574.010, TA0006, and a CVE with no `--asset`, and look at each in the Browser.
+Finally, `--clear` must leave no `Analysis` or `Score` node.
+
+**Decisions (approved 2026-11-16)**
+1. Writing the results to Neo4j is accepted. `explain` is a separate command and is not part of `score_kg all`.
+2. For technique and tactic input, only the CVEs the technique links to count, and paths go only to the hosts that have them.
+3. No APOC Extended. Custom procedures can only wrap Cypher, so the EVS would need a second CVSS implementation.
+
 ## Proposed order of work
 
 | # | Step | Depends on |
