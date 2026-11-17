@@ -8,7 +8,7 @@
 
 ![blast radius](figures/fig1_blast_radius.png)
 
-Measured: network 2026-11-16T15:49:15+00:00; usable 2026-11-16T15:49:22+00:00; dependents 2026-11-16T15:58:45+00:00.
+Measured: network 2026-11-17T00:08:05+00:00; usable 2026-11-17T00:08:24+00:00; dependents 2026-11-17T00:18:25+00:00.
 
 Per (asset, CVE) pair, pooled over (host, affected host) pairs:
 
@@ -28,13 +28,13 @@ Hosts the pentest reached from its foothold (independent of the edges): pooled r
 | Variant | Recall | Predicted per foothold |
 |---|---:|---:|
 | B0 | 0.000 | 0.0 |
-| B1 (k=1) | 0.273 | 1.0 |
+| B1 (k=1) | 0.216 | 1.7 |
 | B1 (k=2) | 1.000 | 16.0 |
-| B2 | 1.000 | 7.6 |
-| B3 | 0.273 | 1.0 |
-| B4 | 0.182 | 0.5 |
-| B5 (k=2) | 0.182 | 0.8 |
-| B5 (k=3) | 0.182 | 0.8 |
+| B2 | 1.000 | 7.7 |
+| B3 | 0.216 | 1.7 |
+| B4 | 0.189 | 0.8 |
+| B5 (k=2) | 0.243 | 1.2 |
+| B5 (k=3) | 0.243 | 1.3 |
 
 EVS with each variant's set inside P(a,c), ranked against the A4 consequence labels:
 
@@ -65,7 +65,7 @@ EVS with each variant's set inside P(a,c), ranked against the A4 consequence lab
 | EPSS | 0.339 | 0.686 | 0.026 | 0.500 |
 | KEV | 0.310 | 0.646 | 0.052 | 0.500 |
 | SSVC | 0.329 | 0.780 | 0.156 | 0.636 |
-| WazuhVD | 0.198 | 0.653 | 0.005 | 0.598 |
+| WazuhVD | 0.190 | 0.635 | -0.049 | 0.482 |
 | Random | 0.257 | 0.624 | -0.024 | 0.467 |
 
 | Comparison | change in NDCG@50 [95% CI] |
@@ -75,10 +75,10 @@ EVS with each variant's set inside P(a,c), ranked against the A4 consequence lab
 | L3 − L2 | +0.028 [+0.004, +0.075] * |
 | L4 − L3 | +0.235 [+0.143, +0.293] * |
 | L4 − L0 | +0.264 [+0.165, +0.328] * |
-| L4 − EPSS | +0.115 [+0.027, +0.194] * |
+| L4 − EPSS | +0.115 [+0.027, +0.196] * |
 | L4 − KEV | +0.144 [+0.039, +0.200] * |
 | L4 − SSVC | +0.126 [+0.017, +0.185] * |
-| L4 − WazuhVD | +0.257 [+0.158, +0.322] * |
+| L4 − WazuhVD | +0.264 [+0.165, +0.328] * |
 | L4 − Random | +0.198 [+0.059, +0.283] * |
 
 ## Part A: score ladder against pentest ground truth
@@ -87,36 +87,66 @@ EVS with each variant's set inside P(a,c), ranked against the A4 consequence lab
 
 ### A1. Vulnerabilities on assets (asset × CVE, no alert)
 
-9 labelled pairs from `pentest_results.csv` (1 exploited); `not_tried` pairs are left out. Relevance = exploited (1/0). Bootstrap resamples pairs. Origin: 0 drawn by the sampler (`pentest_candidates.csv`), 9 hand-picked. WazuhVD: 2 pairs reported by Wazuh, 7 not (CVSS base used).
+34 labelled pairs from `pentest_results.csv` (25 exploited); `not_tried` pairs are left out. Relevance = exploited (1/0). Bootstrap resamples pairs. Origin: 0 drawn by the sampler (`pentest_candidates.csv`), 34 hand-picked. WazuhVD: 4 pairs reported by Wazuh, 30 not (CVSS base used). Not scorable (no CVSS v3.1 vector, or not in the inventory): HR-App/CVE-2017-12617, Jump/CVE-2023-48795.
 
 | Score | NDCG@5 | NDCG@10 | P@5 | P@10 | MRR | AP |
 |---|---:|---:|---:|---:|---:|---:|
-| L0 | 0.710 | 0.710 | 0.200 | 0.100 | 0.606 | 0.606 |
-| L1 | 0.710 | 0.710 | 0.200 | 0.100 | 0.603 | 0.603 |
-| L2 | 0.710 | 0.710 | 0.200 | 0.100 | 0.596 | 0.596 |
-| L3 | 1.000 | 1.000 | 0.200 | 0.100 | 1.000 | 1.000 |
-| L4 | 1.000 | 1.000 | 0.200 | 0.100 | 1.000 | 1.000 |
-| EPSS | 1.000 | 1.000 | 0.200 | 0.100 | 1.000 | 1.000 |
-| KEV | 1.000 | 1.000 | 0.200 | 0.100 | 1.000 | 1.000 |
-| SSVC | 1.000 | 1.000 | 0.200 | 0.100 | 1.000 | 1.000 |
-| WazuhVD | 0.710 | 0.710 | 0.200 | 0.100 | 0.606 | 0.606 |
-| Random | 0.431 | 0.431 | 0.200 | 0.100 | 0.250 | 0.250 |
+| L0 | 0.780 | 0.773 | 0.733 | 0.750 | 1.000 | 0.748 |
+| L1 | 0.780 | 0.711 | 0.733 | 0.660 | 1.000 | 0.736 |
+| L2 | 0.780 | 0.711 | 0.733 | 0.660 | 1.000 | 0.740 |
+| L3 | 0.913 | 0.757 | 0.867 | 0.675 | 1.000 | 0.763 |
+| L4 | 0.723 | 0.609 | 0.600 | 0.500 | 1.000 | 0.720 |
+| EPSS | 0.684 | 0.596 | 0.600 | 0.500 | 1.000 | 0.724 |
+| KEV | 0.874 | 0.820 | 0.831 | 0.775 | 1.000 | 0.796 |
+| SSVC | 0.777 | 0.679 | 0.700 | 0.600 | 1.000 | 0.731 |
+| WazuhVD | 0.780 | 0.773 | 0.733 | 0.750 | 1.000 | 0.748 |
+| Random | 0.447 | 0.641 | 0.600 | 0.800 | 0.333 | 0.753 |
+
+| Comparison | change in NDCG@10 [95% CI] (* = CI excludes 0) |
+|---|---|
+| L1 − L0 | -0.062 [-0.195, +0.039] |
+| L2 − L1 | +0.000 [-0.064, +0.000] |
+| L3 − L2 | +0.046 [+0.000, +0.130] |
+| L4 − L3 | -0.148 [-0.350, +0.000] |
+| L4 − EPSS | +0.013 [-0.274, +0.227] |
+| L4 − KEV | -0.211 [-0.441, -0.017] * |
+| L4 − SSVC | -0.071 [-0.293, +0.123] |
+| L4 − WazuhVD | -0.165 [-0.405, +0.079] |
+| L4 − Random | -0.033 [-0.475, +0.291] |
+
+### A2. Alerted vulnerability instances, per pentest scenario
+
+5 scenarios, 7 instances in their time windows. Grades 3/2/1/0 from the pentest record. Metrics averaged over scenarios; bootstrap over scenarios.
+
+| Score | NDCG@5 | NDCG@10 | P@5 | P@10 | MRR | AP |
+|---|---:|---:|---:|---:|---:|---:|
+| L0 | 0.877 | 0.877 | 0.080 | 0.040 | 0.400 | 1.000 |
+| L1 | 0.877 | 0.877 | 0.080 | 0.040 | 0.400 | 1.000 |
+| L2 | 0.877 | 0.877 | 0.080 | 0.040 | 0.400 | 1.000 |
+| L3 | 0.877 | 0.877 | 0.080 | 0.040 | 0.400 | 1.000 |
+| L4 | 0.877 | 0.877 | 0.080 | 0.040 | 0.400 | 1.000 |
+| EPSS | 0.877 | 0.877 | 0.080 | 0.040 | 0.400 | 1.000 |
+| KEV | 0.877 | 0.877 | 0.080 | 0.040 | 0.349 | 0.873 |
+| SSVC | 0.877 | 0.877 | 0.080 | 0.040 | 0.349 | 0.873 |
+| Wazuh | 0.877 | 0.877 | 0.080 | 0.040 | 0.349 | 0.873 |
+| WazuhVD | 0.877 | 0.877 | 0.080 | 0.040 | 0.400 | 1.000 |
+| Random | 0.877 | 0.877 | 0.080 | 0.040 | 0.300 | 0.750 |
 
 | Comparison | change in NDCG@10 [95% CI] (* = CI excludes 0) |
 |---|---|
 | L1 − L0 | +0.000 [+0.000, +0.000] |
 | L2 − L1 | +0.000 [+0.000, +0.000] |
-| L3 − L2 | +0.290 [+0.000, +0.410] |
+| L3 − L2 | +0.000 [+0.000, +0.000] |
 | L4 − L3 | +0.000 [+0.000, +0.000] |
 | L4 − EPSS | +0.000 [+0.000, +0.000] |
-| L4 − KEV | +0.000 [+0.000, +0.000] |
-| L4 − SSVC | +0.000 [+0.000, +0.000] |
-| L4 − WazuhVD | +0.290 [+0.000, +0.410] |
-| L4 − Random | +0.569 [+0.000, +0.667] |
+| L4 − KEV | +0.000 [-0.185, +0.185] |
+| L4 − SSVC | +0.000 [-0.185, +0.185] |
+| L4 − Wazuh | +0.000 [-0.185, +0.185] |
+| L4 − WazuhVD | +0.000 [+0.000, +0.000] |
+| L4 − Random | +0.000 [-0.369, +0.369] |
 
-### A2
+Scenarios scored: S14-web-to-jenkins-1116 (n=2, grades [0, 3]); S15-web-to-tomcat-write (n=2, grades [0, 1]); S16-api-to-redis (n=1, grades [2]); S17-dep-pc-to-admin-pc-ssh (n=1, grades [0]); S18-kali-to-nginx-mp4 (n=1, grades [0])
 
-No labelled data in this run.
 
 ## Sensitivity: how the EVS reprioritises CVSS (mechanism only, not ground truth)
 

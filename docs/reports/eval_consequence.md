@@ -4,7 +4,7 @@ Generated 2026-11-17 by `python -m eval_kg consequence`. β = 0.5, γ = 0.5. EPS
 
 **Question.** The EVS claims to prioritise a vulnerability by what its exploitation would *do in this network*, which a CVSS base score cannot see. A4 checks that claim against what the lab *measured*: for each asset × CVE pair, the number of other hosts actually affected in the CVE's impact mode.
 
-**Label (grade 0–3, capped).** Compromise-mode CVE (C or I impact): hosts usable with what is stored on the asset (`measure-usable`, 2026-11-16T15:49:22+00:00). Disruption-mode CVE (availability only): hosts whose service fails when the asset stops (`measure-deps`, 2026-11-16T15:58:45+00:00). Both are measured in the running lab and read none of the score's inputs (CR/IR/AR, CVSS, KEV, EPSS).
+**Label (grade 0–3, capped).** Compromise-mode CVE (C or I impact): hosts usable with what is stored on the asset (`measure-usable`, 2026-11-17T00:08:24+00:00). Disruption-mode CVE (availability only): hosts whose service fails when the asset stops (`measure-deps`, 2026-11-17T00:18:25+00:00). Both are measured in the running lab and read none of the score's inputs (CR/IR/AR, CVSS, KEV, EPSS).
 
 **Items.** 615 asset × CVE pairs (the whole graph inventory, no sampling), 388 with grade ≥ 1 (prevalence 0.63, the AP of a random ranking). Grades: 0: 227, 1: 291, 2: 95, 3: 2.
 
@@ -24,7 +24,7 @@ Expected values over random orders within tied scores. τ-b and concordance are 
 | EPSS | 0.310 | 0.339 | 0.770 | 0.800 | 0.686 | 0.026 | 0.517 |
 | KEV | 0.301 | 0.310 | 0.770 | 0.660 | 0.646 | 0.052 | 0.505 |
 | SSVC | 0.305 | 0.329 | 0.776 | 0.877 | 0.780 | 0.156 | 0.578 |
-| WazuhVD | 0.078 | 0.198 | 0.730 | 0.730 | 0.653 | 0.005 | 0.503 |
+| WazuhVD | 0.078 | 0.190 | 0.726 | 0.693 | 0.635 | -0.049 | 0.470 |
 | Random | 0.122 | 0.257 | 0.749 | 0.660 | 0.624 | -0.024 | 0.485 |
 
 Gain in NDCG@50 with a 95% paired-bootstrap CI (resampled within each grade; * = CI excludes 0):
@@ -36,10 +36,10 @@ Gain in NDCG@50 with a 95% paired-bootstrap CI (resampled within each grade; * =
 | L3 − L2 | +0.028 [+0.004, +0.075] * |
 | L4 − L3 | +0.235 [+0.143, +0.293] * |
 | L4 − L0 | +0.264 [+0.165, +0.328] * |
-| L4 − EPSS | +0.115 [+0.027, +0.194] * |
+| L4 − EPSS | +0.115 [+0.027, +0.196] * |
 | L4 − KEV | +0.144 [+0.039, +0.200] * |
 | L4 − SSVC | +0.126 [+0.017, +0.185] * |
-| L4 − WazuhVD | +0.257 [+0.158, +0.322] * |
+| L4 − WazuhVD | +0.264 [+0.165, +0.328] * |
 | L4 − Random | +0.198 [+0.059, +0.283] * |
 
 ## 2. The same CVE on different hosts
@@ -56,7 +56,7 @@ Gain in NDCG@50 with a 95% paired-bootstrap CI (resampled within each grade; * =
 | EPSS | 169 | 0 | 169 | 0 | 0.500 [0.500, 0.500] |
 | KEV | 169 | 0 | 169 | 0 | 0.500 [0.500, 0.500] |
 | SSVC | 169 | 46 | 123 | 0 | 0.636 [0.574, 0.698] |
-| WazuhVD | 169 | 36 | 130 | 3 | 0.598 [0.545, 0.652] |
+| WazuhVD | 169 | 0 | 163 | 6 | 0.482 [0.456, 0.500] |
 | Random | 169 | 79 | 0 | 90 | 0.467 [0.380, 0.549] |
 
 Examples (same CVE, same CVSS base, different host):

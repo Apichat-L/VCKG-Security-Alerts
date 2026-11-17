@@ -90,7 +90,7 @@ def fig_blast(bp):
 
 
 def fig_ladder(sp):
-    sets = [(k, sp["sets"][k]) for k in ("A1", "A2") if k in sp["sets"]]
+    sets = [(k, sp["sets"][k]) for k in ("A1",) if k in sp["sets"]]
     if not sets:
         return None
     fig = _fig(5.4 * len(sets), 3.6)

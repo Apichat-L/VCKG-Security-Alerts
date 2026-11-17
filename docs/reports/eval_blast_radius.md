@@ -4,9 +4,9 @@ Generated 2026-11-17 by `python -m eval_kg blast-ablation`. Protocol: `docs/eval
 
 Ground truth, measured in the running lab (not read from `lab/*.csv`):
 
-- **network**: TCP reachability from each host (compromise mode, network view), measured 2026-11-16T15:49:15+00:00.
-- **usable**: hosts usable with what is stored on each host (compromise mode), measured 2026-11-16T15:49:22+00:00.
-- **dependents**: hosts whose service fails when a host is stopped (disruption mode), measured 2026-11-16T15:58:45+00:00.
+- **network**: TCP reachability from each host (compromise mode, network view), measured 2026-11-17T00:08:05+00:00.
+- **usable**: hosts usable with what is stored on each host (compromise mode), measured 2026-11-17T00:08:24+00:00.
+- **dependents**: hosts whose service fails when a host is stopped (disruption mode), measured 2026-11-17T00:18:25+00:00.
 
 Variants: B0 none · B1 unrestricted k-hop over any edge type · B2 zone-level · B3 ours undirected · B4 ours (Algorithm 1, k=1) · B5 ours k=2/3.
 
@@ -90,8 +90,34 @@ The pentest scenarios record an attacker foothold (`attacker:`) and the hosts it
 | S10-dmz-web-to-jenkins-1115 | Web | Jenkins | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 0/1 | 0/1 |
 | S11-office-ssh-smb-bruteforce | Dep-PC | Admin-PC, Files-SMB | 0/2 | 0/2 | 2/2 | 2/2 | 0/2 | 0/2 | 0/2 | 0/2 |
 | S12-office-db-credential-theft | Dep-PC | PostgreSQL | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 0/1 | 0/1 |
-| **Pooled recall** | | | 0.000 | 0.273 | 1.000 | 1.000 | 0.273 | 0.182 | 0.182 | 0.182 |
-| Hosts predicted per foothold | | | 0.0 | 1.0 | 16.0 | 7.6 | 1.0 | 0.5 | 0.8 | 0.8 |
+| S14-web-to-jenkins-1116 | Web | Jenkins | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 0/1 | 0/1 |
+| S15-web-to-tomcat-write | Web | HR-App | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 0/1 | 0/1 |
+| S16-api-to-redis | API | Redis | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 0/1 | 0/1 |
+| S19-api-to-gitea-userenum | API | Gitea | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 0/1 | 0/1 |
+| S20-web-to-gitea-lastlogin | Web | Gitea | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 0/1 | 0/1 |
+| S21-web-to-gitea-heatmap | Web | Gitea | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 0/1 | 0/1 |
+| S22-api-to-postgresql-rls | API | PostgreSQL | 0/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 |
+| S23-jump-to-hrdb-mariadb | Jump | HR-DB | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 1/1 | 1/1 |
+| S24-adminpc-to-samba-guest | Admin-PC | Files-SMB | 0/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 |
+| S25-deppc-to-grafana-creds | Dep-PC | Monitoring | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 0/1 | 0/1 |
+| S26-deppc-to-adminpc-sshenum | Dep-PC | Admin-PC | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 0/1 | 0/1 |
+| S27-deppc-to-jump-terrapin | Dep-PC | Jump | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 0/1 | 0/1 |
+| S28-api-to-postgresql-carddata | API | PostgreSQL | 0/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 |
+| S30-web-to-hrapp-tomcat-partialput | Web | HR-App | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 0/1 | 0/1 |
+| S31-jump-to-hrdb-mariadb-spatial | Jump | HR-DB | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 1/1 | 1/1 |
+| S33-api-to-redis-lua-gc | API | Redis | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 0/1 | 0/1 |
+| S35-web-to-jenkins-websocket-cli | Web | Jenkins | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 0/1 | 0/1 |
+| S36-deppc-to-grafana-wildcard-uid | Dep-PC | Monitoring | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 0/1 | 0/1 |
+| S37-deppc-to-grafana-dashboard-perms | Dep-PC | Monitoring | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 0/1 | 0/1 |
+| S38-api-to-postgresql-secdef-toctou | API | PostgreSQL | 0/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 |
+| S39-api-to-redis-client-tracking | API | Redis | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 0/1 | 0/1 |
+| S40-api-to-gitea-stopwatch | API | Gitea | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 0/1 | 0/1 |
+| S41-deppc-to-grafana-contact-points | Dep-PC | Monitoring | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 0/1 | 0/1 |
+| S42-api-to-postgresql-rls-prepared | API | PostgreSQL | 0/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 |
+| S43-api-to-gitea-token-scope | API | Gitea | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 0/1 | 0/1 |
+| S44-web-to-jenkins-secrettextarea | Web | Jenkins | 0/1 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 | 0/1 | 0/1 |
+| **Pooled recall** | | | 0.000 | 0.216 | 1.000 | 1.000 | 0.216 | 0.189 | 0.243 | 0.243 |
+| Hosts predicted per foothold | | | 0.0 | 1.7 | 16.0 | 7.7 | 1.7 | 0.8 | 1.2 | 1.3 |
 
 A miss means the attacker got somewhere the variant did not predict (e.g. guessing a password for a host the foothold has no recorded flow to); a large predicted set buys recall with precision.
 
@@ -100,13 +126,13 @@ A miss means the attacker got somewhere the variant did not predict (e.g. guessi
 | Variant | Mean runtime per query (ms) | Mean affected hosts | Mean non-asset nodes returned |
 |---|---:|---:|---:|
 | B0 | 0.00 | 0.00 | 0.0 |
-| B1 (k=1) | 8.60 | 1.41 | 583.2 |
-| B1 (k=2) | 22.85 | 16.00 | 1757.4 |
-| B2 | 0.00 | 6.94 | 0.0 |
-| B3 | 0.00 | 1.41 | 0.0 |
-| B4 | 0.00 | 0.71 | 0.0 |
-| B5 (k=2) | 0.00 | 1.12 | 0.0 |
-| B5 (k=3) | 0.00 | 1.29 | 0.0 |
+| B1 (k=1) | 49.06 | 1.41 | 368.4 |
+| B1 (k=2) | 96.86 | 16.00 | 1218.8 |
+| B2 | 0.01 | 6.94 | 0.0 |
+| B3 | 0.02 | 1.41 | 0.0 |
+| B4 | 0.01 | 0.71 | 0.0 |
+| B5 (k=2) | 0.01 | 1.12 | 0.0 |
+| B5 (k=3) | 0.01 | 1.29 | 0.0 |
 
 ## Downstream: the EVS with each variant's blast radius in P(a,c)
 

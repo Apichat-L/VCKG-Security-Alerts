@@ -2,11 +2,11 @@
 
 > **Underpowered.** Only 0 distinct CVE(s) on the lab's inventory were added to KEV after T0 = 2026-05-01 (fewer than 5). The table shows that the test runs; its numbers are not evidence for or against any score. Positives that sit on several hosts count once per host.
 
-Generated 2026-11-16 by `python -m eval_kg kev-forward --t0 2026-05-01`. Method: `eval_kg/kev_forward.py`. Inventory: Wazuh vulnerability detection snapshot 2026-11-16T16:34:49Z ∪ the graph's links. β = 0.5, γ = 0.5. EPSS v2025.03.14 scored 2026-05-01T12:55:00Z. Ties broken by item id.
+Generated 2026-11-17 by `python -m eval_kg kev-forward --t0 2026-05-01`. Method: `eval_kg/kev_forward.py`. Inventory: Wazuh vulnerability detection snapshot 2026-11-16T23:18:53Z ∪ the graph's links. β = 0.5, γ = 0.5. EPSS v2025.03.14 scored 2026-05-01T12:55:00Z. Ties broken by item id.
 
-**Items:** 1707 (asset, CVE) pairs on 17 assets; **positives:** 0 pairs, 0 distinct CVEs added to KEV after T0 (none).
+**Items:** 1268 (asset, CVE) pairs on 17 assets; **positives:** 0 pairs, 0 distinct CVEs added to KEV after T0 (none).
 
-Excluded from the frame: no CVSS v3.1 vector 90, in KEV at T0 5, published after T0 1625, no publication date 0.
+Excluded from the frame: no CVSS v3.1 vector 92, in KEV at T0 4, published after T0 355, no publication date 0.
 
 E uses KEV as of T0 only and drops SSVC exploitation (no assessment date), so **L3 = L2** in this test. Pairs that are not a network service of the host keep their base AV in L2.
 

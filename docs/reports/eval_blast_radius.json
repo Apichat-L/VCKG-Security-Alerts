@@ -343,42 +343,42 @@
  },
  "cost": {
   "B0": {
-   "ms": 0.00020805825496448532,
+   "ms": 0.0005769116689728381,
    "hosts": 0.0,
    "non_asset_nodes": 0.0
   },
   "B1 (k=1)": {
-   "ms": 8.59678897080919,
+   "ms": 49.06117735294281,
    "hosts": 1.411764705882353,
-   "non_asset_nodes": 583.2352941176471
+   "non_asset_nodes": 368.3529411764706
   },
   "B1 (k=2)": {
-   "ms": 22.848478706210326,
+   "ms": 96.85623752934322,
    "hosts": 16.0,
-   "non_asset_nodes": 1757.3529411764705
+   "non_asset_nodes": 1218.8235294117646
   },
   "B2": {
-   "ms": 0.0019333532263237216,
+   "ms": 0.005545588277634713,
    "hosts": 6.9411764705882355,
    "non_asset_nodes": 0.0
   },
   "B3": {
-   "ms": 0.004246676754144787,
+   "ms": 0.015861588294415817,
    "hosts": 1.411764705882353,
    "non_asset_nodes": 0.0
   },
   "B4": {
-   "ms": 0.0019340291413862038,
+   "ms": 0.00976438235845896,
    "hosts": 0.7058823529411765,
    "non_asset_nodes": 0.0
   },
   "B5 (k=2)": {
-   "ms": 0.002159294073113843,
+   "ms": 0.008518205932512716,
    "hosts": 1.1176470588235294,
    "non_asset_nodes": 0.0
   },
   "B5 (k=3)": {
-   "ms": 0.0020165589376119897,
+   "ms": 0.00856994114763117,
    "hosts": 1.2941176470588236,
    "non_asset_nodes": 0.0
   }
@@ -442,9 +442,9 @@
   }
  },
  "measured_at": {
-  "network": "2026-11-16T15:49:15+00:00",
-  "usable": "2026-11-16T15:49:22+00:00",
-  "dependents": "2026-11-16T15:58:45+00:00"
+  "network": "2026-11-17T00:08:05+00:00",
+  "usable": "2026-11-17T00:08:24+00:00",
+  "dependents": "2026-11-17T00:18:25+00:00"
  },
  "pentest_pivots": {
   "rows": [
@@ -506,27 +506,209 @@
     "reached": [
      "PostgreSQL"
     ]
+   },
+   {
+    "scenario": "S14-web-to-jenkins-1116",
+    "foothold": "Web",
+    "reached": [
+     "Jenkins"
+    ]
+   },
+   {
+    "scenario": "S15-web-to-tomcat-write",
+    "foothold": "Web",
+    "reached": [
+     "HR-App"
+    ]
+   },
+   {
+    "scenario": "S16-api-to-redis",
+    "foothold": "API",
+    "reached": [
+     "Redis"
+    ]
+   },
+   {
+    "scenario": "S19-api-to-gitea-userenum",
+    "foothold": "API",
+    "reached": [
+     "Gitea"
+    ]
+   },
+   {
+    "scenario": "S20-web-to-gitea-lastlogin",
+    "foothold": "Web",
+    "reached": [
+     "Gitea"
+    ]
+   },
+   {
+    "scenario": "S21-web-to-gitea-heatmap",
+    "foothold": "Web",
+    "reached": [
+     "Gitea"
+    ]
+   },
+   {
+    "scenario": "S22-api-to-postgresql-rls",
+    "foothold": "API",
+    "reached": [
+     "PostgreSQL"
+    ]
+   },
+   {
+    "scenario": "S23-jump-to-hrdb-mariadb",
+    "foothold": "Jump",
+    "reached": [
+     "HR-DB"
+    ]
+   },
+   {
+    "scenario": "S24-adminpc-to-samba-guest",
+    "foothold": "Admin-PC",
+    "reached": [
+     "Files-SMB"
+    ]
+   },
+   {
+    "scenario": "S25-deppc-to-grafana-creds",
+    "foothold": "Dep-PC",
+    "reached": [
+     "Monitoring"
+    ]
+   },
+   {
+    "scenario": "S26-deppc-to-adminpc-sshenum",
+    "foothold": "Dep-PC",
+    "reached": [
+     "Admin-PC"
+    ]
+   },
+   {
+    "scenario": "S27-deppc-to-jump-terrapin",
+    "foothold": "Dep-PC",
+    "reached": [
+     "Jump"
+    ]
+   },
+   {
+    "scenario": "S28-api-to-postgresql-carddata",
+    "foothold": "API",
+    "reached": [
+     "PostgreSQL"
+    ]
+   },
+   {
+    "scenario": "S30-web-to-hrapp-tomcat-partialput",
+    "foothold": "Web",
+    "reached": [
+     "HR-App"
+    ]
+   },
+   {
+    "scenario": "S31-jump-to-hrdb-mariadb-spatial",
+    "foothold": "Jump",
+    "reached": [
+     "HR-DB"
+    ]
+   },
+   {
+    "scenario": "S33-api-to-redis-lua-gc",
+    "foothold": "API",
+    "reached": [
+     "Redis"
+    ]
+   },
+   {
+    "scenario": "S35-web-to-jenkins-websocket-cli",
+    "foothold": "Web",
+    "reached": [
+     "Jenkins"
+    ]
+   },
+   {
+    "scenario": "S36-deppc-to-grafana-wildcard-uid",
+    "foothold": "Dep-PC",
+    "reached": [
+     "Monitoring"
+    ]
+   },
+   {
+    "scenario": "S37-deppc-to-grafana-dashboard-perms",
+    "foothold": "Dep-PC",
+    "reached": [
+     "Monitoring"
+    ]
+   },
+   {
+    "scenario": "S38-api-to-postgresql-secdef-toctou",
+    "foothold": "API",
+    "reached": [
+     "PostgreSQL"
+    ]
+   },
+   {
+    "scenario": "S39-api-to-redis-client-tracking",
+    "foothold": "API",
+    "reached": [
+     "Redis"
+    ]
+   },
+   {
+    "scenario": "S40-api-to-gitea-stopwatch",
+    "foothold": "API",
+    "reached": [
+     "Gitea"
+    ]
+   },
+   {
+    "scenario": "S41-deppc-to-grafana-contact-points",
+    "foothold": "Dep-PC",
+    "reached": [
+     "Monitoring"
+    ]
+   },
+   {
+    "scenario": "S42-api-to-postgresql-rls-prepared",
+    "foothold": "API",
+    "reached": [
+     "PostgreSQL"
+    ]
+   },
+   {
+    "scenario": "S43-api-to-gitea-token-scope",
+    "foothold": "API",
+    "reached": [
+     "Gitea"
+    ]
+   },
+   {
+    "scenario": "S44-web-to-jenkins-secrettextarea",
+    "foothold": "Web",
+    "reached": [
+     "Jenkins"
+    ]
    }
   ],
   "recall": {
    "B0": 0.0,
-   "B1 (k=1)": 0.2727272727272727,
+   "B1 (k=1)": 0.21621621621621623,
    "B1 (k=2)": 1.0,
    "B2": 1.0,
-   "B3": 0.2727272727272727,
-   "B4": 0.18181818181818182,
-   "B5 (k=2)": 0.18181818181818182,
-   "B5 (k=3)": 0.18181818181818182
+   "B3": 0.21621621621621623,
+   "B4": 0.1891891891891892,
+   "B5 (k=2)": 0.24324324324324326,
+   "B5 (k=3)": 0.24324324324324326
   },
   "mean_predicted": {
    "B0": 0.0,
-   "B1 (k=1)": 1.0,
+   "B1 (k=1)": 1.6764705882352942,
    "B1 (k=2)": 16.0,
-   "B2": 7.625,
-   "B3": 1.0,
-   "B4": 0.5,
-   "B5 (k=2)": 0.75,
-   "B5 (k=3)": 0.75
+   "B2": 7.705882352941177,
+   "B3": 1.6764705882352942,
+   "B4": 0.7647058823529411,
+   "B5 (k=2)": 1.2058823529411764,
+   "B5 (k=3)": 1.3235294117647058
   }
  }
 }
