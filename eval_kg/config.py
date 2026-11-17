@@ -29,6 +29,17 @@ REPORTS = ROOT / "data" / "reports"
 SCORE_REPORT = REPORTS / "eval_score_ablation.md"
 BLAST_REPORT = REPORTS / "eval_blast_radius.md"
 SENSITIVITY_REPORT = REPORTS / "eval_sensitivity.md"
+KEV_FORWARD_REPORT = REPORTS / "eval_kev_forward.md"
+CONSEQUENCE_REPORT = REPORTS / "eval_consequence.md"
+
+# Wazuh vulnerability detection (docs/PLAN.md §8)
+WAZUH_PAIRS = OBSERVED / "wazuh_pairs.csv"                 # snapshot of the states index, one row per (asset, CVE)
+PENTEST_CANDIDATES = ROOT / "evaluation" / "pentest_candidates.csv"   # sampled A1 targets, committed
+SAMPLE_SIZE = int(os.getenv("EVAL_SAMPLE_SIZE", "20"))
+SAMPLE_EXPLOIT_SHARE = float(os.getenv("EVAL_SAMPLE_EXPLOIT_SHARE", "0.5"))  # share drawn from exploit-available pairs
+KEV_T0 = os.getenv("EVAL_KEV_T0", "2026-05-01")             # forward-in-time KEV test cut-off
+EPSS_HISTORY_URL = os.getenv("EPSS_HISTORY_URL", "https://epss.empiricalsecurity.com/epss_scores-{date}.csv.gz")
+EPSS_HISTORY = ROOT / "data" / "raw" / "epss"
 
 MATCH_SLACK_SECONDS = int(os.getenv("EVAL_MATCH_SLACK", "120"))   # alert <-> pentest step time tolerance
 BOOTSTRAP = int(os.getenv("EVAL_BOOTSTRAP", "1000"))

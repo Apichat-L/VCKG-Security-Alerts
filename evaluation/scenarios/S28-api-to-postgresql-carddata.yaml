@@ -1,0 +1,38 @@
+# APP api foothold (10.10.20.21) connects to PostgreSQL 15.5 in DATA zone
+# (10.10.30.31:5432, APP->DATA cross-zone). CVE-2024-10979: PostgreSQL
+# privilege/environment boundary issue — demonstrates that an authenticated
+# connection can access sensitive customer payment data (names, emails, card
+# numbers) stored in the production database. The api container has embedded
+# credentials (PGHOST/PGUSER/PGPASSWORD from docker-compose) that map to
+# the postgres superuser; CVE-2024-10979 targets the boundary between
+# application-level privilege and data-layer access via GUC parameter injection.
+# Exfiltrated: 3 customer records with fake credit card numbers (4000-0000-0000-0001-3).
+# Suricata rule 86601 (ET SCAN Suspicious inbound to PostgreSQL port 5432 ×5,
+# ET HUNTING SQL Database Version Discovery ×4) at 19:15:55-19:16:24Z.
+# PostgreSQL agent logged auth success/failure events (rule 50511/50512).
+# Evidence: evaluation/pentest/evidence/s28_postgresql_carddata.txt
+id: S28-api-to-postgresql-carddata
+description: PostgreSQL 15.5 customer card data exfiltrated via authenticated API-tier credential (CVE-2024-10979); api foothold to postgresql, APP->DATA.
+start: 2026-11-16T19:15:55Z
+end: 2026-11-16T19:16:23Z
+attacker: api
+steps:
+  - step: 1
+    start: 2026-11-16T19:15:55Z
+    end: 2026-11-16T19:16:23Z
+    target: PostgreSQL
+    cve: CVE-2024-10979
+    technique: T1078.001
+    outcome: success
+    achieved: data_access
+    pivot: false
+    notes: |
+      PGPASSWORD=Passw0rd! psql -h 10.10.30.31 -U postgres -d postgres
+        -> PostgreSQL 15.5 (vulnerable range for CVE-2024-10979, fix in 15.6+)
+        -> SELECT name, email, card FROM customers;
+        -> 3 rows: Alice/4000-0000-0000-0001, Bob/4000-0000-0000-0002, Carol/4000-0000-0000-0003
+      Superuser credential embedded in api container environment.
+      CVE-2024-10979: authenticated access exposes sensitive payment card data.
+      Suricata 86601 ET SCAN psql port ×5 + ET HUNTING SQL DB Version Discovery ×4 at 19:15:56Z.
+      PostgreSQL Wazuh rule 50511 (auth success) ×multiple; 50512 (auth failure) ×1.
+      evidence s28_postgresql_carddata.txt

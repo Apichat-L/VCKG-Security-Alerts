@@ -1,0 +1,36 @@
+# Dep-PC (OFFICE, 10.10.40.42) probes Grafana 10.2.3 in MGMT zone
+# (monitoring, 10.10.50.52:3000, OFFICE->MGMT cross-zone). CVE-2025-4123
+# (CVSS 9.4 CRITICAL): targets Grafana sensitive information exposure.
+# In this deployment the auth bypass variant of the CVE requires specific
+# org.allow_sign_up / anonymous.enabled config not present here; instead,
+# the default admin credential (admin/Passw0rd!) was successfully guessed,
+# and the authenticated Grafana datasource API exposes the full PostgreSQL
+# connection string including host (10.10.30.31:5432), database user (postgres),
+# and sslmode=disable. The datasource proxy also confirmed live connectivity
+# to the database. Suricata rule 86601 (ET HUNTING curl User-Agent to Dotted
+# Quad ×6, ET INFO Outgoing Basic Auth Base64) at 19:10:30Z; also at 19:14:46Z.
+# Evidence: evaluation/pentest/evidence/s25_grafana_creds.txt
+id: S25-deppc-to-grafana-creds
+description: Grafana 10.2.3 default admin credential enables sensitive datasource credential extraction (CVE-2025-4123); dep-pc foothold to monitoring, OFFICE->MGMT.
+start: 2026-11-16T19:10:28Z
+end: 2026-11-16T19:14:44Z
+attacker: dep-pc
+steps:
+  - step: 1
+    start: 2026-11-16T19:10:28Z
+    end: 2026-11-16T19:14:44Z
+    target: Monitoring
+    cve: CVE-2025-4123
+    technique: T1078.001
+    outcome: success
+    achieved: data_access
+    pivot: true
+    notes: |
+      Grafana 10.2.3 at http://10.10.50.52:3000 (MGMT zone).
+      Default credential admin/Passw0rd! accepted (authenticated).
+      GET /api/datasources -> datasource "Shop DB" (uid: shopdb):
+        url: 10.10.30.31:5432, type: postgresql, user: postgres, sslmode: disable
+      Datasource proxy query confirmed live PostgreSQL connection.
+      CVE-2025-4123: sensitive config exposure; full auth bypass requires anon-auth config.
+      Suricata 86601 ET HUNTING curl + ET INFO Basic Auth at 19:10:30Z, 19:14:46Z.
+      evidence s25_grafana_creds.txt

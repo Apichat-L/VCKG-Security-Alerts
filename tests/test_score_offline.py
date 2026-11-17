@@ -51,12 +51,55 @@ def test_reachability_edges_respect_the_zone_policy():
     assert model.reachability_edges(CONNECTS, ZONE, ALLOWED) == {("a", "b"), ("b", "c")}
 
 
-def test_propagation_discounts_by_distance():
+def test_propagation_is_noisy_or_over_the_blast_radius():
     edges = model.reachability_edges(CONNECTS, ZONE, ALLOWED)
     crit = {"a": 1.0, "b": 0.5, "c": 1.0, "d": 1.0}
-    # from a: b at 1 hop (0.5 * 0.5) + c at 2 hops (1 * 0.25), d unreachable; |V_A| - 1 = 3
-    assert model.propagation(edges, "a", crit, 0.5) == (0.25 + 0.25) / 3
-    assert model.propagation(edges, "c", crit, 0.5) == 0.0
+    # Eq. 16, k = 1: from a only b (0.5 * 0.5) is in BR_1; k = 2 adds c at 2 hops (1 * 0.25); d is never reachable
+    assert model.propagation(edges, "a", crit, 0.5) == 0.25
+    assert model.propagation(edges, "a", crit, 0.5, k=2) == 1 - (1 - 0.25) * (1 - 0.25)
+    assert model.propagation(edges, "c", crit, 0.5) == 0.0                       # c reaches nothing
+    assert model.propagation(edges, "c", crit, 0.5, "disruption") == 0.25        # b depends on c
+
+
+# --- metamorphic properties of Eq. 16 (A0 rung of the evaluation) ----------------------------------------
+def _edges(pairs):
+    return set(pairs)
+
+
+def test_p_is_zero_for_an_isolated_asset_and_bounded():
+    crit = {"a": 1.0, "b": 1.0, "c": 1.0}
+    assert model.propagation(set(), "a", crit, 0.5) == 0.0
+    star = _edges([("a", "b"), ("a", "c")])
+    assert 0.0 <= model.propagation(star, "a", crit, 0.9, k=3) < 1.0
+
+
+def test_p_never_falls_when_a_critical_neighbour_is_added_or_a_neighbour_gets_more_critical():
+    crit = {"a": 1.0, "b": 0.5, "c": 0.0}
+    base = _edges([("a", "b")])
+    p0 = model.propagation(base, "a", crit, 0.5)
+    assert model.propagation(base | {("a", "c")}, "a", crit, 0.5) >= p0
+    assert model.propagation(base, "a", {**crit, "b": 1.0}, 0.5) >= p0
+    assert model.propagation(base, "a", {**crit, "b": 0.0}, 0.5) <= p0
+
+
+def test_p_never_rises_when_an_edge_is_removed_or_the_firewall_tightens():
+    zone = {"a": "Z1", "b": "Z2", "c": "Z2"}
+    crit = {"a": 1.0, "b": 1.0, "c": 1.0}
+    connects = [("a", "b"), ("a", "c")]
+    open_ = model.reachability_edges(connects, zone, {("Z1", "Z2")})
+    closed = model.reachability_edges(connects, zone, set())
+    assert model.propagation(closed, "a", crit, 0.5) <= model.propagation(open_, "a", crit, 0.5)
+    assert model.propagation(open_ - {("a", "c")}, "a", crit, 0.5) <= model.propagation(open_, "a", crit, 0.5)
+
+
+def test_disruption_equals_compromise_on_the_reversed_graph_and_depth_nests():
+    edges = _edges([("a", "b"), ("b", "c"), ("d", "b")])
+    rev = {(v, u) for u, v in edges}
+    crit = {"a": 1.0, "b": 0.5, "c": 1.0, "d": 0.5}
+    for h in crit:
+        assert model.propagation(edges, h, crit, 0.5, "disruption", 2) == model.propagation(rev, h, crit, 0.5, "compromise", 2)
+        assert set(model.blast_radius(edges, h, "compromise", 1)) <= set(model.blast_radius(edges, h, "compromise", 2))
+        assert model.propagation(edges, h, crit, 0.5, k=1) <= model.propagation(edges, h, crit, 0.5, k=2)
 
 
 def test_evs_formula_cap_and_rounding():

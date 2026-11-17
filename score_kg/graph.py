@@ -60,8 +60,12 @@ class VCKG:
     def internet_path(self, hostname: str) -> bool:
         return self.assets[hostname]["zone"] in self.internet_zones
 
-    def propagation(self, hostname: str, gamma: float) -> float:
-        return model.propagation(self.edges, hostname, self.crit, gamma)
+    def propagation(self, hostname: str, gamma: float, mode: str = "compromise", k: int = config.BLAST_K) -> float:
+        """P(a, c) of Eq. 16 for a vulnerability with impact mode `mode` on `hostname`."""
+        return model.propagation(self.edges, hostname, self.crit, gamma, mode, k)
+
+    def propagation_for(self, hostname: str, vector: str, gamma: float, k: int = config.BLAST_K) -> float:
+        return self.propagation(hostname, gamma, model.impact_mode(vector), k)
 
 
 def load(wait: int = 60) -> VCKG:

@@ -30,8 +30,9 @@ def test_office_hosts_get_adjacent_mav_on_network_cves(vckg):
 
 
 def test_propagation_of_nginx(vckg):
-    # Nginx -> Web (1 hop) -> API (2) -> PostgreSQL (3), all crit 1, seventeen assets
-    assert vckg.propagation("Nginx", 0.5) == pytest.approx((0.5 + 0.25 + 0.125) / 16)
+    # Eq. 16 over BR_1: compromise of Nginx reaches Web (crit 1, 1 hop) -> 1 - (1 - 0.5); nothing depends on Nginx
+    assert vckg.propagation("Nginx", 0.5, "compromise") == pytest.approx(0.5)
+    assert vckg.propagation("Nginx", 0.5, "disruption") == 0.0
     assert vckg.propagation("Dep-PC", 0.5) == 0.0
 
 

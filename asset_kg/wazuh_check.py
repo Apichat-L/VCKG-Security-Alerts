@@ -98,19 +98,25 @@ def wazuh_inventory() -> tuple[dict, dict]:
     return agents, packages
 
 
-def wazuh_cves(agent_ids: list[str]) -> dict:
-    """(agent id, package name) -> {cve id: wazuh severity}, from the vulnerability states index."""
-    out: dict = defaultdict(dict)
-    body = {"size": 1000, "_source": ["agent.id", "package.name", "vulnerability.id", "vulnerability.severity"],
-            "query": {"terms": {"agent.id": agent_ids}}, "sort": [{"_doc": "asc"}]}
+def scan_vulnerabilities(fields: list[str], query: dict | None = None, page: int = 1000):
+    """Yield every document (its _source) of Wazuh's vulnerability states index, paging with search_after."""
+    body = {"size": page, "_source": fields, "query": query or {"match_all": {}}, "sort": [{"_doc": "asc"}]}
     while True:
         hits = search(body, index=wz.VULN_INDEX)["hits"]["hits"]
         for h in hits:
-            d = h["_source"]
-            out[(d["agent"]["id"], d["package"]["name"])][d["vulnerability"]["id"]] = d["vulnerability"].get("severity")
-        if len(hits) < body["size"]:
-            return out
+            yield h["_source"]
+        if len(hits) < page:
+            return
         body["search_after"] = hits[-1]["sort"]
+
+
+def wazuh_cves(agent_ids: list[str]) -> dict:
+    """(agent id, package name) -> {cve id: wazuh severity}, from the vulnerability states index."""
+    out: dict = defaultdict(dict)
+    for d in scan_vulnerabilities(["agent.id", "package.name", "vulnerability.id", "vulnerability.severity"],
+                                  {"terms": {"agent.id": agent_ids}}):
+        out[(d["agent"]["id"], d["package"]["name"])][d["vulnerability"]["id"]] = d["vulnerability"].get("severity")
+    return out
 
 
 # ---------------------------------------------------------------------------------------------- reasons

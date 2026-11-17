@@ -89,11 +89,16 @@ def load_index(ecosystem: str) -> dict:
     zpath = RAW / f"{family(ecosystem)}-all.zip"
     cache = INDEX / f"{ecosystem.replace(':', '_')}.json"
     if cache.exists() and (not zpath.exists() or cache.stat().st_mtime >= zpath.stat().st_mtime):
-        return json.loads(cache.read_text(encoding="utf-8"))
+        try:
+            return json.loads(cache.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:   # empty/truncated by an interrupted earlier run: rebuild
+            print(f"  {cache.relative_to(config.ROOT)} is corrupt, rebuilding")
     print(f"  indexing OSV {ecosystem} from {zpath.name} (once; cached in {cache.relative_to(config.ROOT)})")
     index = build_index(ecosystem)
     cache.parent.mkdir(parents=True, exist_ok=True)
-    cache.write_text(json.dumps(index), encoding="utf-8")
+    tmp = cache.with_suffix(".part")   # write then rename, so an interrupted run leaves no bad cache
+    tmp.write_text(json.dumps(index), encoding="utf-8")
+    tmp.replace(cache)
     return index
 
 

@@ -1,0 +1,25 @@
+# Office lateral-movement attempt: dep-pc targets Admin-PC's sshd (OpenSSH 8.9p1 Ubuntu-3, the
+# original unpatched build, in the CVE-2024-6387 "regreSSHion" affected range). The real race
+# condition needs thousands of concurrent connections sustained over minutes and has a material
+# chance of crashing sshd -- a DoS, excluded by this project's scope rules (same reasoning as the
+# project's existing S02 OpenSSH record). So the race itself was deliberately not attempted; what ran
+# for real was version confirmation of the vulnerable build, plus genuine password-auth attempts with
+# guessed credentials, denied by sshd. Recorded as a contained/failed attempt -- graded contrast
+# against S14/S15/S16's successes, not a "we didn't try this" omission (the login attempts did run).
+# Evidence: evaluation/pentest/evidence/s17_ssh_regresshion.txt.
+id: S17-dep-pc-to-admin-pc-ssh
+description: Office lateral-movement attempt against Admin-PC's OpenSSH (CVE-2024-6387 regreSSHion); race not attempted (no-DoS rule), password guesses denied.
+start: 2026-11-16T16:50:43Z
+end: 2026-11-16T16:50:52Z
+attacker: dep-pc
+steps:
+  - step: 1
+    start: 2026-11-16T16:50:43Z
+    end: 2026-11-16T16:50:52Z
+    target: Admin-PC
+    cve: CVE-2024-6387
+    technique: T1110.001
+    outcome: failed
+    achieved: none
+    pivot: false
+    notes: Confirmed Admin-PC's sshd is OpenSSH 8.9p1 Ubuntu-3 (unpatched, in the regreSSHion range). Three guessed-password login attempts (admin123, changeme, Passw0rd) from dep-pc, all denied. The signal-handler race itself was not attempted (needs thousands of connections over minutes; risks crashing sshd, a DoS excluded by project scope). Wazuh rule 5760 (sshd auth failed) x3 + rule 5503 (PAM login failed) x2. evidence s17_ssh_regresshion.txt

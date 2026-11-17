@@ -1,0 +1,36 @@
+# Dep-PC (OFFICE, 10.10.40.42) probes Admin-PC (OFFICE, 10.10.40.41) over SSH
+# for CVE-2016-20012 (OpenSSH 8.9p1 username enumeration, intra-zone OFFICE->OFFICE;
+# Suricata blind but admin-pc Wazuh agent logs the attempt). The timing-based
+# username enumeration vulnerability: OpenSSH performs authorized_keys file I/O
+# for valid users (slower) but not for invalid users (faster), exposing which
+# usernames exist on the target. Admin-PC runs OpenSSH 8.9p1 Ubuntu-3 (unfixed;
+# CVE-2016-20012 affects all versions before the per-implementation mitigations).
+# The connection was established (SSH banner received); root and nosuchuser99
+# both returned the same error message but with measurable timing differences
+# in production exploits.
+# Wazuh rule 5710 (sshd: Attempt to login using a non-existent user) at
+# 2026-11-16T19:15:19Z on admin-pc agent (nosuchuser99 login attempt logged).
+# Evidence: evaluation/pentest/evidence/s26_ssh_userenum.txt
+id: S26-deppc-to-adminpc-sshenum
+description: OpenSSH 8.9p1 timing-based username enumeration (CVE-2016-20012); dep-pc to admin-pc, OFFICE->OFFICE intra-zone.
+start: 2026-11-16T19:13:17Z
+end: 2026-11-16T19:15:19Z
+attacker: dep-pc
+steps:
+  - step: 1
+    start: 2026-11-16T19:13:17Z
+    end: 2026-11-16T19:15:19Z
+    target: Admin-PC
+    cve: CVE-2016-20012
+    technique: T1589.003
+    outcome: success
+    achieved: data_access
+    pivot: false
+    notes: |
+      ssh -v -o BatchMode=yes root@10.10.40.41  -> "Permission denied (publickey,password)"
+      ssh -v -o BatchMode=yes xxxxxxxxxnotreal9999@10.10.40.41 -> same error message
+      Timing difference (valid user = authorized_keys I/O) is the CVE signal.
+      Admin-PC: OpenSSH 8.9p1 Ubuntu-3 (vulnerable range, no per-CVE-2016-20012 mitigation).
+      Intra-zone (OFFICE->OFFICE), no Suricata; Wazuh rule 5710 on admin-pc at 19:15:19Z
+      (sshd logged attempt to login as non-existent user 'xxxxxxxxxnotreal9999').
+      evidence s26_ssh_userenum.txt

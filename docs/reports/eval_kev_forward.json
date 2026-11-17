@@ -1,0 +1,132 @@
+{
+ "generated": "2026-11-17",
+ "t0": "2026-05-01",
+ "n_items": 1268,
+ "n_positive": 0,
+ "positive_cves": [],
+ "underpowered": true,
+ "excluded": {
+  "no CVSS v3.1 vector": 92,
+  "in KEV at T0": 4,
+  "published after T0": 355,
+  "no publication date": 0
+ },
+ "scores": {
+  "L0": {
+   "NDCG@10": null,
+   "NDCG@100": null,
+   "P@10": 0.0,
+   "P@100": 0.0,
+   "MRR": 0.0,
+   "first": null,
+   "mean_rank": null
+  },
+  "L1": {
+   "NDCG@10": null,
+   "NDCG@100": null,
+   "P@10": 0.0,
+   "P@100": 0.0,
+   "MRR": 0.0,
+   "first": null,
+   "mean_rank": null
+  },
+  "L2": {
+   "NDCG@10": null,
+   "NDCG@100": null,
+   "P@10": 0.0,
+   "P@100": 0.0,
+   "MRR": 0.0,
+   "first": null,
+   "mean_rank": null
+  },
+  "L3": {
+   "NDCG@10": null,
+   "NDCG@100": null,
+   "P@10": 0.0,
+   "P@100": 0.0,
+   "MRR": 0.0,
+   "first": null,
+   "mean_rank": null
+  },
+  "L4": {
+   "NDCG@10": null,
+   "NDCG@100": null,
+   "P@10": 0.0,
+   "P@100": 0.0,
+   "MRR": 0.0,
+   "first": null,
+   "mean_rank": null
+  },
+  "EPSS@T0": {
+   "NDCG@10": null,
+   "NDCG@100": null,
+   "P@10": 0.0,
+   "P@100": 0.0,
+   "MRR": 0.0,
+   "first": null,
+   "mean_rank": null
+  },
+  "SSVC@T0": {
+   "NDCG@10": null,
+   "NDCG@100": null,
+   "P@10": 0.0,
+   "P@100": 0.0,
+   "MRR": 0.0,
+   "first": null,
+   "mean_rank": null
+  },
+  "WazuhVD": {
+   "NDCG@10": null,
+   "NDCG@100": null,
+   "P@10": 0.0,
+   "P@100": 0.0,
+   "MRR": 0.0,
+   "first": null,
+   "mean_rank": null
+  }
+ },
+ "gains": {
+  "L1 \u2212 L0": {
+   "diff": null,
+   "lo": null,
+   "hi": null,
+   "n": 0
+  },
+  "L2 \u2212 L1": {
+   "diff": null,
+   "lo": null,
+   "hi": null,
+   "n": 0
+  },
+  "L3 \u2212 L2": {
+   "diff": null,
+   "lo": null,
+   "hi": null,
+   "n": 0
+  },
+  "L4 \u2212 L3": {
+   "diff": null,
+   "lo": null,
+   "hi": null,
+   "n": 0
+  },
+  "L4 \u2212 EPSS@T0": {
+   "diff": null,
+   "lo": null,
+   "hi": null,
+   "n": 0
+  },
+  "L4 \u2212 SSVC@T0": {
+   "diff": null,
+   "lo": null,
+   "hi": null,
+   "n": 0
+  },
+  "L4 \u2212 WazuhVD": {
+   "diff": null,
+   "lo": null,
+   "hi": null,
+   "n": 0
+  }
+ }
+}

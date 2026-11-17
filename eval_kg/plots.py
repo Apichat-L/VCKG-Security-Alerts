@@ -1,7 +1,7 @@
 """Figures and the complementary report for the final check.
 
 Reads the JSON side-outputs the stage-4/5 reports write next to their markdown (eval_blast_radius.json,
-eval_score_ablation.json, eval_sensitivity.json, score_sensitivity.json) and the live graph counts, and writes
+eval_score_ablation.json, eval_consequence.json, eval_sensitivity.json, score_sensitivity.json) and the live graph counts, and writes
 PNGs to data/reports/figures/ plus data/reports/final_check_report.md. It computes nothing new: every number
 plotted is one the reports already print.
 
@@ -72,25 +72,25 @@ def fig_blast(bp):
     for ax, (name, d) in zip(axes, sets.items()):
         _style(ax)
         xs = range(len(variants))
-        for off, (key, col, lab) in zip((-0.27, 0, 0.27), (("precision", BLUE, "precision"), ("recall", ORANGE, "recall"),
-                                                          ("f1", AQUA, "F1"))):
-            ax.bar([x + off for x in xs], [_n(d["variants"][v][key]) for v in variants], width=0.24, color=col,
+        for off, (key, col, lab) in zip((-0.27, 0, 0.27), (("pooled_precision", BLUE, "precision"),
+                                                          ("pooled_recall", ORANGE, "recall"), ("pooled_f1", AQUA, "F1"))):
+            ax.bar([x + off for x in xs], [_n(d["variants"][v].get(key)) for v in variants], width=0.24, color=col,
                    edgecolor=SURFACE, linewidth=1.2, label=lab)
         ax.set_xticks(list(xs))
         ax.set_xticklabels([v.replace(" (", "\n(") for v in variants], fontsize=7)
         ax.set_ylim(0, 1.05)
         ax.set_title(f"{name} truth ({d['mode']} mode)", fontsize=9, color=INK, loc="left")
         b4 = variants.index("B4")
-        ax.annotate(f"B4  P {_n(d['variants']['B4']['precision']):.2f} / R {_n(d['variants']['B4']['recall']):.2f}",
+        ax.annotate(f"B4  P {_n(d['variants']['B4'].get('pooled_precision')):.2f} / R {_n(d['variants']['B4'].get('pooled_recall')):.2f}",
                     (b4, 1.0), xytext=(0, 4), textcoords="offset points", ha="center", fontsize=7.5, color=INK)
-    axes[0].set_ylabel("mean over assets")
+    axes[0].set_ylabel("pooled over (host, affected host) pairs")
     axes[0].legend(frameon=False, fontsize=8, ncol=3, loc="lower left", bbox_to_anchor=(0, 1.1))
     fig.suptitle("Part B: blast-radius variants against what the lab measured", x=0.01, ha="left", fontsize=11, color=INK, y=1.16)
     return _save(fig, "fig1_blast_radius.png")
 
 
 def fig_ladder(sp):
-    sets = [(k, sp["sets"][k]) for k in ("A1", "A2") if k in sp["sets"]]
+    sets = [(k, sp["sets"][k]) for k in ("A1",) if k in sp["sets"]]
     if not sets:
         return None
     fig = _fig(5.4 * len(sets), 3.6)
@@ -114,6 +114,45 @@ def fig_ladder(sp):
     axes[0].legend(handles=handles, frameon=False, fontsize=8, loc="lower left", bbox_to_anchor=(0, 1.1), ncol=2)
     fig.suptitle("Part A: ranking quality of each ladder level and baseline", x=0.01, ha="left", fontsize=11, color=INK, y=1.16)
     return _save(fig, "fig2_score_ladder.png")
+
+
+def fig_consequence(cq):
+    """Part A4: each score against the consequence measured in the lab."""
+    fig = _fig(11.4, 4.1)
+    ax1, ax2 = fig.subplots(1, 2)
+    names = list(cq["scores"])
+    colors = [LADDER.get(k, GREY) for k in names]
+    _style(ax1)
+    vals = [_n(cq["scores"][k]["NDCG@50"]) for k in names]
+    ax1.bar(range(len(names)), vals, width=0.6, color=colors, edgecolor=SURFACE, linewidth=1.2)
+    for i, v in enumerate(vals):
+        ax1.annotate(f"{v:.2f}", (i, v), xytext=(0, 3), textcoords="offset points", ha="center", fontsize=7.5, color=INK)
+    ax1.set_xticks(range(len(names)))
+    ax1.set_xticklabels(names, fontsize=8, rotation=35, ha="right")
+    ax1.set_ylim(0, max(vals) * 1.25)
+    ax1.set_ylabel("NDCG@50 (tie-aware)")
+    ax1.set_title(f"{cq['n_items']} asset x CVE pairs, graded by measured consequence", fontsize=9, color=INK, loc="left")
+
+    _style(ax2)
+    same = cq["same_cve"]["scores"]
+    vals = [_n(same[k]["concordance"]) for k in names]
+    lo = [v - _n(same[k]["lo"]) for k, v in zip(names, vals)]
+    hi = [_n(same[k]["hi"]) - v for k, v in zip(names, vals)]
+    ax2.bar(range(len(names)), vals, width=0.6, color=colors, edgecolor=SURFACE, linewidth=1.2,
+            yerr=[lo, hi], error_kw={"ecolor": MUTED, "elinewidth": 0.9, "capsize": 2})
+    for i, v in enumerate(vals):
+        ax2.annotate(f"{v:.2f}", (i, v), xytext=(0, 6), textcoords="offset points", ha="center", fontsize=7.5, color=INK)
+    ax2.axhline(0.5, color=MUTED, linewidth=0.9, linestyle=(0, (4, 3)))
+    ax2.set_xticks(range(len(names)))
+    ax2.set_xticklabels(names, fontsize=8, rotation=35, ha="right")
+    ax2.set_ylim(0, 1.12)
+    ax2.set_ylabel("share ordered like the lab")
+    ax2.set_title(f"Same CVE on different hosts ({cq['same_cve']['n_cves']} CVEs, "
+                  f"{same['L0']['pairs']} host pairs; dashed = tie / chance)", fontsize=9, color=INK, loc="left")
+    handles = [Patch(color=LADDER["L2"], label="our ladder L0-L4 (light to dark)"), Patch(color=GREY, label="baselines")]
+    ax1.legend(handles=handles, frameon=False, fontsize=8, loc="lower left", bbox_to_anchor=(0, 1.1), ncol=2)
+    fig.suptitle("Part A4: ranking by the consequence measured in the lab", x=0.01, ha="left", fontsize=11, color=INK, y=1.16)
+    return _save(fig, "fig6_consequence.png")
 
 
 def fig_sensitivity(se):
@@ -241,9 +280,11 @@ def _score_tables(sp):
         if not d:
             L += [f"### {key}", "", "No labelled data in this run.", ""]
             continue
-        L += [f"### {d['title']}", "", d["note"], "", "| Score | NDCG@5 | NDCG@10 | P@5 | P@10 | MRR |", "|---|---:|---:|---:|---:|---:|"]
+        L += [f"### {d['title']}", "", d["note"], "", "| Score | NDCG@5 | NDCG@10 | P@5 | P@10 | MRR | AP |",
+              "|---|---:|---:|---:|---:|---:|---:|"]
         for k, m in d["scores"].items():
-            L.append(f"| {k} | {_f(m['NDCG@5'])} | {_f(m['NDCG@10'])} | {_f(m['P@5'])} | {_f(m['P@10'])} | {_f(m['MRR'])} |")
+            L.append(f"| {k} | {_f(m['NDCG@5'])} | {_f(m['NDCG@10'])} | {_f(m['P@5'])} | {_f(m['P@10'])} | {_f(m['MRR'])} | "
+                     f"{_f(m.get('AP'))} |")
         L += ["", "| Comparison | change in NDCG@10 [95% CI] (* = CI excludes 0) |", "|---|---|"]
         L += [f"| {n} | {_ci(b)} |" for n, b in d["gains"].items()]
         if key == "A2":
@@ -252,7 +293,7 @@ def _score_tables(sp):
     return L
 
 
-def build_report(notes: str, figs: dict, bp, sp, se, gs) -> Path:
+def build_report(notes: str, figs: dict, bp, sp, se, gs, cq=None) -> Path:
     L = [f"# Final check: full rebuild, validation and results ({date.today().isoformat()})", ""]
     if notes:
         L += [notes.strip(), ""]
@@ -263,12 +304,31 @@ def build_report(notes: str, figs: dict, bp, sp, se, gs) -> Path:
               f"![blast radius]({figs['blast'].relative_to(config.REPORTS).as_posix()})", "",
               "Measured: " + "; ".join(f"{k} {v}" for k, v in bp["measured_at"].items()) + ".", ""]
         if bp["per_pair"]:
-            L += ["Per (asset, CVE) pair:", "", "| Variant | Precision | Recall | F1 |", "|---|---:|---:|---:|"]
-            L += [f"| {v} | {_f(m['precision'])} | {_f(m['recall'])} | {_f(m['f1'])} |" for v, m in bp["per_pair"].items()]
+            L += ["Per (asset, CVE) pair, pooled over (host, affected host) pairs:", "",
+                  "| Variant | Precision | Recall | F1 |", "|---|---:|---:|---:|"]
+            L += [f"| {v} | {_f(m.get('pooled_precision'))} | {_f(m.get('pooled_recall'))} | {_f(m.get('pooled_f1'))} |"
+                  for v, m in bp["per_pair"].items()]
             L.append("")
-        if bp["downstream_ndcg10"]:
-            L += ["L4 ranking (NDCG@10, A1 labels) with each variant's P(u):", "",
-                  "| Variant | NDCG@10 |", "|---|---:|"] + [f"| {v} | {_f(x)} |" for v, x in bp["downstream_ndcg10"].items()] + [""]
+        pv = bp.get("pentest_pivots") or {}
+        if pv.get("recall"):
+            L += ["Hosts the pentest reached from its foothold (independent of the edges): pooled recall per variant, "
+                  "and hosts predicted per foothold:", "", "| Variant | Recall | Predicted per foothold |", "|---|---:|---:|"]
+            L += [f"| {v} | {_f(r)} | {_f(pv['mean_predicted'][v], 1)} |" for v, r in pv["recall"].items()] + [""]
+        if bp["downstream_ndcg10"] and isinstance(next(iter(bp["downstream_ndcg10"].values())), dict):
+            L += ["EVS with each variant's set inside P(a,c), ranked against the A4 consequence labels:", "",
+                  "| Variant | NDCG@50 | AP | Kendall tau-b | Same-CVE concordance |", "|---|---:|---:|---:|---:|"]
+            L += [f"| {v} | {_f(m['NDCG@50'])} | {_f(m['AP'])} | {_f(m['tau_b'])} | {_f(m['same_cve'])} |"
+                  for v, m in bp["downstream_ndcg10"].items()] + [""]
+    if cq:
+        L += ["## Part A4: ranking by the consequence measured in the lab", "",
+              f"![consequence]({figs['cons'].relative_to(config.REPORTS).as_posix()})" if "cons" in figs else "", "",
+              f"{cq['n_items']} asset x CVE pairs, {cq['n_positive']} with a measured consequence (prevalence "
+              f"{cq['prevalence']:.2f}). Full tables: `eval_consequence.md`.", "",
+              "| Score | NDCG@50 | AP | Kendall tau-b | Same-CVE concordance |", "|---|---:|---:|---:|---:|"]
+        L += [f"| {k} | {_f(m['NDCG@50'])} | {_f(m['AP'])} | {_f(m['tau_b'])} | "
+              f"{_f(cq['same_cve']['scores'][k]['concordance'])} |" for k, m in cq["scores"].items()]
+        L += ["", "| Comparison | change in NDCG@50 [95% CI] |", "|---|---|"]
+        L += [f"| {n} | {_ci(b)} |" for n, b in cq["gains"].items()] + [""]
     if sp:
         L += ["## Part A: score ladder against pentest ground truth", "",
               f"![score ladder]({figs['ladder'].relative_to(config.REPORTS).as_posix()})" if "ladder" in figs else "", ""]
@@ -298,7 +358,10 @@ def plot(notes_file: Path | None = None, before_file: Path | None = None) -> Non
     sp = _load(R / "eval_score_ablation.json")
     se = _load(R / "eval_sensitivity.json")
     gs = _load(R / "score_sensitivity.json")
+    cq = _load(R / "eval_consequence.json")
     figs = {}
+    if cq:
+        figs["cons"] = fig_consequence(cq)
     if bp:
         figs["blast"] = fig_blast(bp)
     if sp:
@@ -316,5 +379,5 @@ def plot(notes_file: Path | None = None, before_file: Path | None = None) -> Non
     except Exception as e:                                  # the graph may be unreachable; the other figures stand alone
         print(f"graph-build figure skipped: {e}")
     notes = notes_file.read_text(encoding="utf-8") if notes_file and notes_file.exists() else ""
-    path = build_report(notes, figs, bp, sp, se, gs)
+    path = build_report(notes, figs, bp, sp, se, gs, cq)
     print(f"{len(figs)} figures -> {FIGS}; report -> {path}")

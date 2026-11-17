@@ -14,12 +14,65 @@ come from the score or from the files the algorithm reads**. Code: `eval_kg/`. C
 | L1 | + CR/IR/AR (Environmental, E = X, MAV = base) | does asset value change the ranking? |
 | L2 | + MAV from Internet reachability (Table I) | does network position? |
 | L3 | + E from alert / KEV / SSVC (Eq. 14) | does exploitation evidence? |
-| L4 | + P(u), giving the EVS (Eqs. 16–17) | does the propagation (blast radius) term? |
-| Baselines | EPSS percentile, KEV (0/1), CISA SSVC decision, Wazuh `rule.level` | is the EVS better than what a SOC uses today? |
+| L4 | + P(a,c) over the blast radius BR_1(a,c), giving the EVS (Eqs. 16–17) | does the propagation (blast radius) term? |
+| Baselines | EPSS percentile, KEV (0/1), CISA SSVC decision, Wazuh `rule.level`, **WazuhVD** (the CVSS base Wazuh's vulnerability detector shows for the pair), **Random** (chance level, seeded) | is the EVS better than what a SOC uses today? |
+
+**What each rung asks** (changed 2026-11-17, docs/PLAN.md §9). The EVS is a *priority given consequence*, not
+an exploit predictor, so the ladder has a rung for each kind of evidence and each states what it can and cannot
+show:
+
+| Rung | Ground truth | Can show | Cannot show |
+|---|---|---|---|
+| A0 | property tests on Eq. 16 (`tests/test_score_offline.py`: isolated host → 0, monotone in criticality and edges, firewall tightening never raises P, disruption = compromise on the reversed graph, BR_1 ⊆ BR_2) | the score behaves as specified | that it is useful |
+| Sensitivity | none (mechanism) | how far and in which direction each step moves CVSS | that the movement is right |
+| A1 | pentest: exploited yes/no | exploit-evidence steps (L3) | anything about L1/L2/L4 (1 positive; exploitability depends on configuration, which no EVS input models) |
+| A2 | pentest scenarios, graded alert instances | alert triage | currently empty, see below |
+| A3 | forward-in-time KEV | exploit prediction | underpowered (≤ 2 positives) |
+| **A4** | **consequence measured in the lab** (usable / dependents sets, per the CVE's impact mode) | that the EVS orders vulnerabilities by what their exploitation does *in this network*, including the same CVE on different hosts | exploit prediction; independence from the lab design (the edges and the measurements share it) |
 
 **Ground truth: the pentest record** (`evaluation/`, filled in by the team).
 
 - **A1, asset × CVE:** `pentest_results.csv` says whether each examined vulnerability was exploited in the lab. Relevance is 1 or 0; `not_tried` rows are left out, because unknown is not the same as negative.
+  **Which pairs get tried is sampled, not hand-picked** (from 2026-11-16, below). The report gives each row's
+  origin (sampled / hand-picked) and repeats A1 on the sampled rows alone (A1s).
+- **A3, forward-in-time KEV** (`python -m eval_kg kev-forward`): see *Wazuh vulnerability detection* below.
+- **A4, measured consequence** (`python -m eval_kg consequence`): every graph asset × CVE pair (615), graded 0–3 by
+  the number of other hosts the lab measured as affected in the CVE's impact mode: compromise → hosts usable with
+  what is stored on the asset, disruption → hosts whose service fails when it stops. Neither measurement reads
+  CR/IR/AR, CVSS, KEV or EPSS. Reported: NDCG@10/@50, AP, Kendall τ-b and pair concordance against the grade;
+  paired bootstrap CIs (within-grade resampling) for each ladder step and L4 against each baseline; concordance on
+  the **same CVE on different hosts** (CVSS can only tie these); and how many CVSS ties the EVS breaks, and in which
+  direction.
+
+**Metrics, all rungs.** Tied scores are scored at their expected value over random orders within the tie
+(exact for NDCG and P@k, Monte Carlo for MRR/AP), never by item id. EVS values tied at the cap of 10 are ordered
+by the uncapped Env·(1+βP) (docs/scoring.md). Paired bootstrap CIs resample positives and negatives (or each
+grade) separately, so every resample is defined.
+
+### Wazuh vulnerability detection: inventory, sampling frame, baseline (docs/PLAN.md §8)
+
+Wazuh's vulnerability detector reports every (agent, package, CVE) on every host. The graph's links do not use
+it (they come from OSV / NVD), so it is an independent, scanner-produced inventory. It is used in three ways, never
+as a relevance label (a scanner says a CVE is *present*, not that it is *exploitable* or *important*):
+
+1. **Snapshot.** `python -m eval_kg wazuh-pairs` writes the states index to `data/eval/wazuh_pairs.csv`, one row per
+   (asset, CVE), dated. The **frame** = these pairs ∪ the graph's own links (so software Wazuh cannot inventory,
+   e.g. Jenkins, Apache httpd, Node.js, still counts), joined to the CTI graph for the CVSS vector, KEV and SSVC.
+2. **A1 sampling frame.** `python -m eval_kg sample --n 20` draws the next pentest targets from the frame's scorable
+   pairs that have no label yet: a stratified random sample, strata = zone × CVSS band (≥ 9 / ≥ 7 / below) ×
+   public exploit available (KEV, or SSVC exploitation `poc`/`active`; the graph stores no exploit-db references).
+   Half the sample comes from exploit-available pairs (`EVAL_SAMPLE_EXPLOIT_SHARE`), because a uniform draw would
+   be almost all library CVEs nobody can exercise in a container. Seed 7; every row records its inclusion
+   probability. Output: `evaluation/pentest_candidates.csv`; the team protocol is in `evaluation/README.md`.
+3. **WazuhVD baseline.** The score a Wazuh SOC actually sorts its vulnerability list by. Pairs Wazuh does not
+   report (graph-only links) fall back to the CVE's CVSS base; the A1 note says how many did.
+
+**A3, forward-in-time KEV test** (PLAN.md §6 tier A). Items = the frame. Cut-off T0 (`--t0`, default 2026-05-01):
+CVEs already in KEV at T0, and CVEs published after T0, are excluded; label = added to KEV after T0. The ladder
+uses only what was known at T0: E from KEV at T0 (never set after the exclusion) and no SSVC exploitation (the
+graph has no assessment date, and `active` would leak the label), so L3 = L2 in this test. EPSS is the daily file
+of T0. Packages that are not a network service of the host keep their base AV. The report flags itself as
+underpowered below 5 distinct positive CVEs.
 - **A2, alerted vulnerability instances:** each scenario (`scenarios/*.yaml`) lists its steps with time windows and outcomes. An alert instance (asset, CVE) inside a scenario's window gets the grade of the step it matches (same target, same CVE if the step names one, overlapping time ± 120 s):
 
   | Grade | Step outcome |
@@ -69,17 +122,31 @@ an intruder or an outage actually affects.
 
 **Metrics.**
 
-- Per asset, and per (asset, CVE) pair with the CVE's impact mode choosing the direction and the truth set: precision, recall and F1 of the predicted affected set. An empty prediction has precision 1, and an empty truth set has recall 1.
+- Per asset, and per (asset, CVE) pair with the CVE's impact mode choosing the direction and the truth set: **pooled** (micro-averaged over (host, affected host) pairs) precision, recall and F1, which give B0 and empty sets no free credit; the earlier per-host mean is kept next to it. Hosts with an empty truth are counted, with each variant's false positives on them.
+- **Independent check against the pentest:** for each scenario with a foothold inside the lab, the hosts the attacker actually reached (`outcome: success`), against the variant's compromise-mode blast radius of the foothold. These were achieved by hand and are read neither from `CONNECTS_TO` nor from `checks.csv`.
 - Cost: runtime per query and set size. B1 also reports the non-asset nodes it returns.
-- Downstream: L4 recomputed with each variant's reachable set feeding P(u), then NDCG@10 on the A1 labels.
+- Downstream: each variant's set replaces BR_1 inside P(a,c), and the resulting EVS is ranked against the A4 labels (NDCG@50, AP, τ-b, same-CVE concordance).
 
 ## Threats to validity (to state in the paper)
+
+- **A4 and Part B share the lab design.** `CONNECTS_TO` was written from the intended flows that the health checks
+  exercise, and the usable set finds credentials the team placed. A4 shows that the EVS carries the measured
+  consequence into the ranking, and that CVSS cannot; it does not show that the edges were discovered
+  independently. The pentest-pivot check in Part B is the independent counterpart, and it shows the limit of a
+  one-hop, flow-based blast radius: from the pentest footholds, B4 contains 2 of the 11 hosts the attacker reached;
+  most were reached by guessing or reusing a password towards a host the foothold has no recorded flow to.
+- **The EVS cap.** With the blast-radius P, 126 of 615 pairs reach the cap of 10 (38 have CVSS ≥ 9.8). The reported
+  EVS keeps the cap; rankings order capped values by the uncapped product.
 
 - **Small lab:** 17 hosts in 5 zones (8 in the runs reported below, before the lab was extended on 2026-11-16). The CIs will be wide, and they are reported rather than hidden.
 - **Labels from the same team:** the pentest is run and recorded by the authors. Grading by outcome rather than by asset value limits, but does not remove, the bias.
 - **Lab-specific ground truth:** the measured sets describe this lab. Another network would need its own measurement, which the scripts automate.
 - **NVD has no feed before 2002:** `cti_kg` covers CVE ids from 1999 on via `cvelistV5`, but NVD's own CVSS/CPE/CWE enrichment (`download_nvd`, clamped to `NVD_FIRST_YEAR = 2002`) only starts at 2002, since NVD publishes no yearly feed before then. A 1999-2001 CVE can still be in the graph with whatever `cvelistV5` alone provides, just without NVD's CVSS vector unless a CNA supplied one.
 - **Usable reach:** it finds what is stored on a host in common places. It is a lower bound on what a skilled intruder could use.
+- **Wazuh pairs are a scanner's view, not exploitability.** They decide which pairs *can* be drawn for the pentest
+  and give the WazuhVD baseline; they never grade a pair. Wazuh also has blind spots (software not installed as a
+  package) and quirks (on Jump it files openssh CVEs under `openssh-client` and none under `openssh-server`), which
+  is why the frame adds the graph's links.
 
 ## Preliminary run (2026-11-14)
 
@@ -193,6 +260,61 @@ reprioritisation is *correct*, because there is no outcome label. The validated 
   a reachable, high-availability host out-ranking a critical CVE on an isolated workstation, the reprioritisation
   a flat CVSS cannot make. Whether that reprioritisation is *right* is what Part B measures, not this report.
 
+### Wazuh vulnerability detection on the 17-host lab (2026-11-16)
+
+- **Inventory.** 3,047 (asset, CVE) pairs from Wazuh on all 17 hosts (42–306 per host; the IDS box's 280 are dropped,
+  it is not an asset). With the graph's links the frame has 3,427 pairs: 249 both, 2,798 Wazuh only (mostly OS
+  libraries on hosts whose service is modelled), 380 graph only; 3,337 have a CVSS v3.1 vector.
+- **Link agreement rerun** (`python -m asset_kg wazuh-check`, `docs/reports/asset_cve_validation.md`): on software
+  both sides see, precision 68.3% and recall 97.1% (235 CVEs in both), against 9.7% / 93.8% on the 8-host lab. It
+  stays *agreement*: most graph-only links are distribution-listed CVEs Wazuh does not report, or upstream builds.
+- **A1 sample drawn.** `evaluation/pentest_candidates.csv`, 20 pairs (seed 7) from 3,328 unlabelled pairs, 10 with a
+  public exploit. Only 3 of the 20 are a network service of the host; the rest are local library CVEs (libpcre2,
+  binutils, perl, gnutls…). Expect many `not_tried`, and record them honestly rather than swapping in easier pairs.
+- **A3 is not usable on this lab.** The inventory holds 8 KEV CVEs, and all but one were added to KEV within weeks
+  of publication. At any T0 from 2023 to 2026 there are at most 2 distinct positive CVEs (2024-07-01:
+  CVE-2024-23897, CVE-2024-38475), and 0 at the default T0. `data/reports/eval_kev_forward.md` says so in its
+  banner; the command stays for a larger inventory.
+- **WazuhVD** joins the A1 table (2 of the 9 labelled pairs are Wazuh-reported); A1 is still flat at NDCG@10 = 1.000
+  for every score, the ceiling effect described above, until sampled rows are labelled.
+
+## Results with the blast-radius P (17-host lab, 2026-11-17)
+
+Reports: `data/reports/eval_consequence.md` (A4), `eval_score_ablation.md` (A1/A2), `eval_blast_radius.md`
+(Part B), `eval_sensitivity.md`; figures and summary in `final_check_report.md`. β = γ = 0.5, k = 1.
+
+**A4, measured consequence (615 pairs, 388 with a consequence).** NDCG@50: L0 0.190, L1 0.201, L2 0.191, L3 0.219,
+**L4 0.454**; EPSS 0.339, SSVC 0.329, KEV 0.310, Random 0.257, WazuhVD 0.198. Paired bootstrap, within-grade:
+
+| Comparison | Δ NDCG@50 [95% CI] |
+|---|---|
+| L4 − L3 (the blast-radius term) | +0.235 [+0.143, +0.293] |
+| L4 − L0 (EVS vs CVSS) | +0.264 [+0.165, +0.328] |
+| L4 − EPSS / KEV / SSVC | +0.115 [+0.027, +0.194] / +0.144 [+0.039, +0.200] / +0.126 [+0.017, +0.185] |
+| L1 − L0, L2 − L1, L3 − L2 | +0.011 [−0.024, +0.042], −0.009 [−0.032, +0.003], +0.028 [+0.004, +0.075] |
+
+Same CVE on different hosts (38 CVEs, 169 host pairs with different measured consequence): CVSS, EPSS and KEV tie
+all of them (0.5); **CR/IR/AR alone (L1) orders 92% like the lab, and the EVS 100%**; SSVC 0.64, WazuhVD 0.60.
+Of 14,916 pairs tied on CVSS base, the EVS separates 82%; where their consequence differs (7,501), it orders 6,714
+like the lab, 764 the other way.
+
+**Part B (pooled over host pairs).** Per (asset, CVE): B4 F1 0.982 (B5 k=2 0.750, B3/B1 k=1 0.687, B2 0.204,
+B0 none). Usable: B4 P/R 0.917/1.000; dependents: 1.000/0.857. Downstream (each variant inside P, A4 labels):
+B4 NDCG@50 0.454 vs B0 0.219, B3 0.302, B2 0.272; B5 is slightly higher (0.474/0.482) because a deeper set adds
+more critical hosts to P. Pentest pivots (independent): B4 recall 2/11, B2 11/11 at 7.6 predicted hosts per
+foothold.
+
+**A1** (9 hand-picked pairs, 1 exploited): with ties scored honestly, L0 0.710 → L3/L4 1.000 (the KEV-listed
+Jenkins CVE separates once E is added); EPSS, KEV, SSVC also 1.000. Underpowered: one positive.
+
+**A2** is empty: the alert store was rebuilt on 2026-11-15 15:23 UTC, after every scenario window
+(S01–S13 run 2026-11-13 to 2026-11-15 13:05). The earlier alerts are in
+`data/backup-2026-11-15/alerts/raw.jsonl`; re-ingesting them with `alert_kg` would restore A2.
+
+**Sensitivity.** Kendall τ-b (CVSS vs EVS) 0.566 over 615 pairs. Per-step attribution: Dep-PC −2.34 on average,
+of which CR/IR/AR −1.43, MAV −0.59, E −0.31, P 0; the P term lifts the hosts with critical neighbours (Jump +1.91,
+Jenkins +1.84, Web +1.51, API +1.43). β/γ grid: τ-b against the default ≥ 0.781.
+
 ## Running
 
 ```powershell
@@ -200,6 +322,9 @@ cd lab_env; docker compose up -d; cd ..        # the lab must run for the measur
 python -m eval_kg measure                       # Part B ground truth -> data/eval/*.json
 python -m eval_kg all                           # both reports -> data/reports/eval_*.md (+ CSV)
 python -m eval_kg sensitivity                    # Part A sensitivity -> data/reports/eval_sensitivity.md (no ground truth)
+python -m eval_kg wazuh-pairs                    # Wazuh vulnerability detection snapshot -> data/eval/wazuh_pairs.csv
+python -m eval_kg sample --n 20                  # A1 pentest targets -> evaluation/pentest_candidates.csv
+python -m eval_kg kev-forward --t0 2026-05-01    # A3 forward-in-time KEV test -> data/reports/eval_kev_forward.md
 python -m eval_kg plot [--notes FILE] [--before STATS]   # figures + data/reports/final_check_report.md from the reports' JSON
 python -m eval_kg all --labels evaluation/dry_run   # pipeline test with synthetic labels (never report these)
 ```

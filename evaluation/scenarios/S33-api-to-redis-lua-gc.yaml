@@ -1,0 +1,34 @@
+# API (APP, 10.10.20.21) -> Redis (DATA, 7.2.4, unauthenticated).
+# CVE-2024-46981 (CVSS 9.8 CRITICAL): Redis Lua scripting collectgarbage() use-after-free.
+# In Redis 7.2.0-7.2.6 (fix=7.2.7), Lua's collectgarbage("count") is callable from
+# EVAL scripts. A crafted sequence of GC calls combined with Lua object manipulation
+# can trigger a use-after-free in the Lua heap, potentially allowing RCE. Confirmed:
+# EVAL calling collectgarbage() returns the status reply (Lua GC accessible unauthenticated).
+# Redis 7.2.4 is in the vulnerable range.
+# No Suricata CVE tag; generic rule 86601 (cross-zone APP->DATA).
+# Evidence: evaluation/pentest/evidence/s33_redis_lua_gc.txt
+id: S33-api-to-redis-lua-gc
+description: Redis 7.2.4 Lua collectgarbage() accessible unauthenticated (CVE-2024-46981 CRITICAL); api->redis, APP->DATA.
+start: 2026-11-16T19:57:56Z
+end: 2026-11-16T19:57:56Z
+attacker: api
+steps:
+  - step: 1
+    start: 2026-11-16T19:57:56Z
+    end: 2026-11-16T19:57:56Z
+    target: Redis
+    cve: CVE-2024-46981
+    technique: T1210
+    outcome: success
+    achieved: data_access
+    pivot: false
+    notes: |
+      redis-cli INFO server | grep redis_version -> redis_version:7.2.4
+      redis-cli EVAL "collectgarbage(\"count\"); return redis.status_reply(
+        \"lua_gc_accessible_7.2.4_lt_7.2.7\")" 0
+        -> lua_gc_accessible_7.2.4_lt_7.2.7
+      Redis 7.2.4 is in the vulnerable range (fix requires 7.2.7+).
+      Lua collectgarbage() is reachable from unauthenticated EVAL scripts.
+      CVE-2024-46981: crafted GC + Lua object manipulation -> use-after-free -> RCE.
+      Redis has no password/protected-mode off, so attack is unauthenticated.
+      evidence s33_redis_lua_gc.txt
